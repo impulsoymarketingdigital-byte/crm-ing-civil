@@ -8,6 +8,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { JournalEntriesModule } from './modules/journal-entries/journal-entries.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { LedgerModule } from './modules/ledger/ledger.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -24,6 +25,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     AccountsModule,
     JournalEntriesModule,
     InventoryModule,
+    LedgerModule,
   ],
   providers: [
     // 1. Validate JWT on every request (skip @Public() routes)
