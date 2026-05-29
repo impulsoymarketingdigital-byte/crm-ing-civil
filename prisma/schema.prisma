@@ -21,11 +21,12 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users          User[]
-  roles          Role[]
-  accounts       Account[]
-  journalEntries JournalEntry[]
-  inventoryItems InventoryItem[]
+  users              User[]
+  roles              Role[]
+  accounts           Account[]
+  journalEntries     JournalEntry[]
+  inventoryItems     InventoryItem[]
+  stockTransactions  StockTransaction[]
 
   @@map("tenants")
 }
@@ -175,6 +176,7 @@ model InventoryItem {
   description    String?
   type           InventoryItemType @default(PRODUCT)
   unitOfMeasure  String            @default("UNIT")
+  /// Weighted Average Cost — updated on every ENTRY transaction
   costPrice      Decimal           @default(0) @db.Decimal(18, 4)
   sellingPrice   Decimal           @default(0) @db.Decimal(18, 4)
   quantityOnHand Decimal           @default(0) @db.Decimal(18, 4)
@@ -183,11 +185,55 @@ model InventoryItem {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stockTransactions StockTransaction[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, type])
   @@index([tenantId, isActive])
   @@map("inventory_items")
+}
+
+// ─────────────────────────────────────────────
+// STOCK TRANSACTIONS
+// ─────────────────────────────────────────────
+enum StockTransactionType {
+  /// Goods received: increases quantity and recalculates WAC
+  ENTRY
+  /// Goods dispatched: decreases quantity; WAC is unchanged
+  EXIT
+}
+
+model StockTransaction {
+  id              String               @id @default(uuid())
+  tenantId        String
+  inventoryItemId String
+  type            StockTransactionType
+  quantity        Decimal              @db.Decimal(18, 4)
+  /// Per-unit cost: entry price for ENTRY, current WAC for EXIT
+  unitCost        Decimal              @db.Decimal(18, 4)
+  /// quantity * unitCost
+  totalCost       Decimal              @db.Decimal(18, 4)
+
+  /// Audit snapshots: state of the item BEFORE this transaction
+  quantityBefore Decimal @db.Decimal(18, 4)
+  wacBefore      Decimal @db.Decimal(18, 4)
+
+  /// State of the item AFTER this transaction
+  quantityAfter  Decimal @db.Decimal(18, 4)
+  wacAfter       Decimal @db.Decimal(18, 4)
+
+  reference  String?
+  notes      String?
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, inventoryItemId])
+  @@index([tenantId, createdAt])
+  @@map("stock_transactions")
 }

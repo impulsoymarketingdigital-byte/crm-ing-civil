@@ -2,7 +2,6 @@ import { IsString, IsNotEmpty, IsUUID, IsEnum, IsOptional, IsNumber, Min } from 
 import { InventoryItemType } from '@prisma/client';
 
 export class CreateInventoryItemDto {
-  @IsUUID() tenantId: string;
   @IsString() @IsNotEmpty() sku: string;
   @IsString() @IsNotEmpty() name: string;
   @IsOptional() @IsString() description?: string;
