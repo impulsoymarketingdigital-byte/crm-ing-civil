@@ -1,0 +1,193 @@
+// NetSuite-Clone - Multi-tenant ERP Schema
+// Prisma 7+ — URL configured in prisma.config.ts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// TENANTS
+// ─────────────────────────────────────────────
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("free")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users          User[]
+  roles          Role[]
+  accounts       Account[]
+  journalEntries JournalEntry[]
+  inventoryItems InventoryItem[]
+
+  @@map("tenants")
+}
+
+// ─────────────────────────────────────────────
+// ROLES
+// ─────────────────────────────────────────────
+model Role {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  permissions Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users  User[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+// ─────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────
+model User {
+  id           String    @id @default(uuid())
+  tenantId     String
+  roleId       String?
+  email        String
+  passwordHash String
+  firstName    String
+  lastName     String
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role   Role?  @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([tenantId, email])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// ACCOUNTS (Chart of Accounts)
+// ─────────────────────────────────────────────
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+model Account {
+  id          String      @id @default(uuid())
+  tenantId    String
+  code        String
+  name        String
+  type        AccountType
+  parentId    String?
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   Account?  @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children Account[] @relation("AccountHierarchy")
+
+  journalLines JournalLine[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, type])
+  @@map("accounts")
+}
+
+// ─────────────────────────────────────────────
+// JOURNAL ENTRIES
+// ─────────────────────────────────────────────
+enum JournalEntryStatus {
+  DRAFT
+  POSTED
+  VOIDED
+}
+
+model JournalEntry {
+  id          String             @id @default(uuid())
+  tenantId    String
+  reference   String
+  description String?
+  date        DateTime
+  status      JournalEntryStatus @default(DRAFT)
+  postedAt    DateTime?
+  createdBy   String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines  JournalLine[]
+
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@index([tenantId, date])
+  @@index([tenantId, status])
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id             String  @id @default(uuid())
+  journalEntryId String
+  accountId      String
+  description    String?
+  debit          Decimal @default(0) @db.Decimal(18, 4)
+  credit         Decimal @default(0) @db.Decimal(18, 4)
+  order          Int     @default(0)
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("journal_lines")
+}
+
+// ─────────────────────────────────────────────
+// INVENTORY ITEMS
+// ─────────────────────────────────────────────
+enum InventoryItemType {
+  PRODUCT
+  SERVICE
+  RAW_MATERIAL
+  FINISHED_GOOD
+}
+
+model InventoryItem {
+  id             String            @id @default(uuid())
+  tenantId       String
+  sku            String
+  name           String
+  description    String?
+  type           InventoryItemType @default(PRODUCT)
+  unitOfMeasure  String            @default("UNIT")
+  costPrice      Decimal           @default(0) @db.Decimal(18, 4)
+  sellingPrice   Decimal           @default(0) @db.Decimal(18, 4)
+  quantityOnHand Decimal           @default(0) @db.Decimal(18, 4)
+  reorderPoint   Decimal           @default(0) @db.Decimal(18, 4)
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@index([tenantId, type])
+  @@index([tenantId, isActive])
+  @@map("inventory_items")
+}
