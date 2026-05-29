@@ -19,6 +19,15 @@ export enum Permission {
   // Inventory
   INVENTORY_READ  = 'inventory:read',
   INVENTORY_WRITE = 'inventory:write',
+
+  // Customers
+  CUSTOMER_READ  = 'customer:read',
+  CUSTOMER_WRITE = 'customer:write',
+
+  // Invoices / Sales
+  INVOICE_READ  = 'invoice:read',
+  INVOICE_WRITE = 'invoice:write',
+  INVOICE_ISSUE = 'invoice:issue',
 }
 
 // Predefined permission sets per system role
@@ -34,6 +43,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     Permission.JOURNAL_POST,
     Permission.JOURNAL_VOID,
     Permission.INVENTORY_READ,
+    Permission.CUSTOMER_READ,
+    Permission.INVOICE_READ,
+    Permission.INVOICE_ISSUE,
   ],
 
   INVENTORY_MANAGER: [
@@ -42,9 +54,20 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     Permission.ACCOUNT_READ,
   ],
 
+  SALES_REP: [
+    Permission.CUSTOMER_READ,
+    Permission.CUSTOMER_WRITE,
+    Permission.INVOICE_READ,
+    Permission.INVOICE_WRITE,
+    Permission.INVOICE_ISSUE,
+    Permission.INVENTORY_READ,
+  ],
+
   VIEWER: [
     Permission.ACCOUNT_READ,
     Permission.JOURNAL_READ,
     Permission.INVENTORY_READ,
+    Permission.CUSTOMER_READ,
+    Permission.INVOICE_READ,
   ],
 };
