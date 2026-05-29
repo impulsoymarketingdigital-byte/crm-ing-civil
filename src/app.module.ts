@@ -10,6 +10,7 @@ import { JournalEntriesModule } from './modules/journal-entries/journal-entries.
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { SalesModule } from './modules/sales/sales.module';
+import { AiAutomationModule } from './modules/ai-automation/ai-automation.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -28,6 +29,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     InventoryModule,
     LedgerModule,
     SalesModule,
+    AiAutomationModule,
   ],
   providers: [
     // 1. Validate JWT on every request (skip @Public() routes)

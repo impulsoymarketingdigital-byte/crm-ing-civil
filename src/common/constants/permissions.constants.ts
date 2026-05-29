@@ -28,6 +28,9 @@ export enum Permission {
   INVOICE_READ  = 'invoice:read',
   INVOICE_WRITE = 'invoice:write',
   INVOICE_ISSUE = 'invoice:issue',
+
+  // AI Automation
+  AI_USE = 'ai:use',
 }
 
 // Predefined permission sets per system role
@@ -46,6 +49,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     Permission.CUSTOMER_READ,
     Permission.INVOICE_READ,
     Permission.INVOICE_ISSUE,
+    Permission.AI_USE,
   ],
 
   INVENTORY_MANAGER: [
