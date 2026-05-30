@@ -30,6 +30,13 @@ model Tenant {
   customers          Customer[]
   invoices           Invoice[]
   projects           Project[]
+  employees          Employee[]
+  payrollPeriods     PayrollPeriod[]
+  apuChapters        ApuChapter[]
+  apuItems           ApuItem[]
+  officialBudgets    OfficialBudget[]
+  certificates       ProjectCertificate[]
+  liquidations       ProjectLiquidation[]
 
   @@map("tenants")
 }
@@ -378,7 +385,10 @@ model Project {
   tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   phases  ProjectPhase[]
   budgets ProjectBudget[]
-  aiuBreakdowns AiuBreakdown[]
+  aiuBreakdowns    AiuBreakdown[]
+  officialBudgets  OfficialBudget[]
+  certificates     ProjectCertificate[]
+  liquidation      ProjectLiquidation?
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -468,4 +478,433 @@ model AiuBreakdown {
 
   @@index([projectId])
   @@map("aiu_breakdowns")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NÓMINA — Colombian Payroll + CST
+// ═══════════════════════════════════════════════════════════════
+
+enum ContractType {
+  INDEFINIDO       // Contrato a término indefinido
+  FIJO             // Contrato a término fijo
+  OBRA_LABOR       // Contrato por obra o labor
+  APRENDIZAJE      // Contrato de aprendizaje SENA
+}
+
+enum ArlRiskLevel {
+  I   // 0.522%
+  II  // 1.044%
+  III // 2.436%
+  IV  // 4.350%
+  V   // 6.960%
+}
+
+model Employee {
+  id           String       @id @default(uuid())
+  tenantId     String
+  code         String
+  firstName    String
+  lastName     String
+  document     String       // Cédula de ciudadanía
+  position     String
+  department   String?
+  contractType ContractType @default(INDEFINIDO)
+
+  /// Salario mensual base (COP)
+  baseSalary        Decimal @db.Decimal(18, 2)
+  /// Auxilio de transporte — true si salario ≤ 2 SMMLV
+  transportAllowance Boolean @default(false)
+
+  riskLevel ArlRiskLevel @default(I)
+
+  eps              String? // Nombre EPS
+  pensionFund      String? // Fondo de pensiones
+  compensationBox  String? // Caja de compensación
+
+  startDate DateTime
+  endDate   DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payrollPeriods PayrollPeriod[]
+
+  @@unique([tenantId, code])
+  @@unique([tenantId, document])
+  @@index([tenantId])
+  @@map("employees")
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+}
+
+model PayrollPeriod {
+  id         String        @id @default(uuid())
+  tenantId   String
+  employeeId String
+  year       Int
+  month      Int           // 1-12
+  /// 1 = primera quincena, 2 = segunda quincena, 0 = mensual completo
+  fortnight  Int           @default(0)
+  startDate  DateTime
+  endDate    DateTime
+  status     PayrollStatus @default(DRAFT)
+
+  // ── Devengado ────────────────────────────────────────────────
+  baseSalary            Decimal @default(0) @db.Decimal(18, 2)
+  transportAllowance    Decimal @default(0) @db.Decimal(18, 2) // $200.000 2025
+  overtimeDayPct25      Decimal @default(0) @db.Decimal(18, 2) // HED 25%
+  overtimeNightPct75    Decimal @default(0) @db.Decimal(18, 2) // HEN 75%
+  overtimeHolidayPct75  Decimal @default(0) @db.Decimal(18, 2) // HEDF 75%
+  overtimeHolidayPct100 Decimal @default(0) @db.Decimal(18, 2) // HEDFC 100%
+  bonuses               Decimal @default(0) @db.Decimal(18, 2) // Otros devengos
+  totalEarned           Decimal @default(0) @db.Decimal(18, 2)
+
+  // ── Deducciones empleado ──────────────────────────────────────
+  healthEmployee    Decimal @default(0) @db.Decimal(18, 2) // 4% EPS
+  pensionEmployee   Decimal @default(0) @db.Decimal(18, 2) // 4% Pensión
+  incomeTax         Decimal @default(0) @db.Decimal(18, 2) // Retención fuente
+  otherDeductions   Decimal @default(0) @db.Decimal(18, 2)
+  totalDeductions   Decimal @default(0) @db.Decimal(18, 2)
+  netPay            Decimal @default(0) @db.Decimal(18, 2)
+
+  // ── Prestaciones sociales (acumuladas del período) ────────────
+  prima                Decimal @default(0) @db.Decimal(18, 2) // 8.33%/mes
+  cesantias            Decimal @default(0) @db.Decimal(18, 2) // 8.33%/mes
+  interesesCesantias   Decimal @default(0) @db.Decimal(18, 2) // 1%/mes (12%/año)
+  vacaciones           Decimal @default(0) @db.Decimal(18, 2) // 4.17%/mes
+
+  // ── Aportes patronales ────────────────────────────────────────
+  healthEmployer       Decimal @default(0) @db.Decimal(18, 2) // 8.5%
+  pensionEmployer      Decimal @default(0) @db.Decimal(18, 2) // 12%
+  arl                  Decimal @default(0) @db.Decimal(18, 2) // risk-based
+  sena                 Decimal @default(0) @db.Decimal(18, 2) // 2%
+  icbf                 Decimal @default(0) @db.Decimal(18, 2) // 3%
+  compensationBox      Decimal @default(0) @db.Decimal(18, 2) // 4%
+  totalEmployerContrib Decimal @default(0) @db.Decimal(18, 2)
+
+  /// Total costo del trabajador = netPay + totalEmployerContrib + prestaciones
+  totalLaborCost Decimal @default(0) @db.Decimal(18, 2)
+
+  notes     String?
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([tenantId, employeeId, year, month, fortnight])
+  @@index([tenantId])
+  @@index([tenantId, employeeId])
+  @@index([tenantId, year, month])
+  @@map("payroll_periods")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// APU — Análisis de Precios Unitarios (master library)
+// ═══════════════════════════════════════════════════════════════
+
+model ApuChapter {
+  id       String  @id @default(uuid())
+  tenantId String
+  code     String
+  name     String
+  order    Int     @default(0)
+
+  tenant Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  ApuItem[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("apu_chapters")
+}
+
+enum ApuInputType {
+  MATERIAL
+  LABOR
+  EQUIPMENT
+}
+
+model ApuItem {
+  id         String  @id @default(uuid())
+  tenantId   String
+  chapterId  String
+  code       String
+  name       String
+  unit       String  @default("GL")
+  /// Factor prestacional sobre mano de obra (Colombia ≈ 1.60)
+  laborFactor Decimal @default(1.6) @db.Decimal(5, 4)
+
+  /// Computed totals (persisted for reporting)
+  materialCost  Decimal @default(0) @db.Decimal(18, 4)
+  laborCost     Decimal @default(0) @db.Decimal(18, 4)
+  equipmentCost Decimal @default(0) @db.Decimal(18, 4)
+  /// laborCost × laborFactor + materialCost + equipmentCost
+  totalUnitCost Decimal @default(0) @db.Decimal(18, 4)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  chapter     ApuChapter   @relation(fields: [chapterId], references: [id])
+  inputs      ApuInput[]
+  budgetLines BudgetLine[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([chapterId])
+  @@map("apu_items")
+}
+
+model ApuInput {
+  id          String       @id @default(uuid())
+  apuItemId   String
+  type        ApuInputType
+  description String
+  unit        String       @default("UN")
+  quantity    Decimal      @db.Decimal(18, 4)
+  unitCost    Decimal      @db.Decimal(18, 4)
+  total       Decimal      @db.Decimal(18, 4) // quantity × unitCost
+
+  apuItem ApuItem @relation(fields: [apuItemId], references: [id], onDelete: Cascade)
+
+  @@index([apuItemId])
+  @@map("apu_inputs")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PRESUPUESTO OFICIAL con AIU
+// ═══════════════════════════════════════════════════════════════
+
+enum BudgetStatus {
+  DRAFT
+  APPROVED
+  SUPERSEDED // replaced by a new version
+}
+
+model OfficialBudget {
+  id        String       @id @default(uuid())
+  tenantId  String
+  projectId String
+  name      String
+  version   Int          @default(1)
+  status    BudgetStatus @default(DRAFT)
+
+  /// AIU over direct cost
+  adminPct  Decimal @default(0) @db.Decimal(7, 6)
+  riskPct   Decimal @default(0) @db.Decimal(7, 6)
+  profitPct Decimal @default(0) @db.Decimal(7, 6)
+
+  /// Computed totals
+  directCost   Decimal @default(0) @db.Decimal(18, 2)
+  adminAmount  Decimal @default(0) @db.Decimal(18, 2)
+  riskAmount   Decimal @default(0) @db.Decimal(18, 2)
+  profitAmount Decimal @default(0) @db.Decimal(18, 2)
+  aiuAmount    Decimal @default(0) @db.Decimal(18, 2)
+  totalBudget  Decimal @default(0) @db.Decimal(18, 2)
+
+  approvedAt DateTime?
+  approvedBy String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project          Project          @relation(fields: [projectId], references: [id])
+  chapters         BudgetChapter[]
+  lines            BudgetLine[]
+  certificates     ProjectCertificate[]
+  liquidations     ProjectLiquidation[]
+
+  @@index([tenantId])
+  @@index([projectId])
+  @@map("official_budgets")
+}
+
+model BudgetChapter {
+  id       String @id @default(uuid())
+  budgetId String
+  code     String
+  name     String
+  order    Int    @default(0)
+
+  /// Computed from lines
+  totalCost Decimal @default(0) @db.Decimal(18, 2)
+
+  budget OfficialBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  lines  BudgetLine[]
+
+  @@index([budgetId])
+  @@map("budget_chapters")
+}
+
+model BudgetLine {
+  id         String  @id @default(uuid())
+  budgetId   String
+  chapterId  String
+  apuItemId  String? // optional link to APU library
+  code       String?
+  description String
+  unit       String  @default("GL")
+  quantity   Decimal @db.Decimal(18, 4)
+  unitCost   Decimal @db.Decimal(18, 4)
+  totalCost  Decimal @db.Decimal(18, 4) // quantity × unitCost
+  order      Int     @default(0)
+
+  budget          OfficialBudget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  chapter         BudgetChapter    @relation(fields: [chapterId], references: [id])
+  apuItem         ApuItem?         @relation(fields: [apuItemId], references: [id])
+  certificateLines CertificateLine[]
+
+  @@index([budgetId])
+  @@index([chapterId])
+  @@map("budget_lines")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACTAS DE AVANCE (Project Certificates)
+// ═══════════════════════════════════════════════════════════════
+
+enum CertificateStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PAID
+  VOIDED
+}
+
+model ProjectCertificate {
+  id       String            @id @default(uuid())
+  tenantId String
+  projectId String
+  budgetId  String
+  number   Int
+  name     String?
+  certDate DateTime
+
+  status CertificateStatus @default(DRAFT)
+
+  /// Retention (garantía): typically 5-10% of certified amount
+  retentionPct    Decimal @default(0.05) @db.Decimal(7, 6)
+  /// Computed fields
+  grossAmount     Decimal @default(0) @db.Decimal(18, 2) // sum of lines
+  retentionAmount Decimal @default(0) @db.Decimal(18, 2)
+  netAmount       Decimal @default(0) @db.Decimal(18, 2)
+
+  /// Cumulative progress up to and including this certificate
+  cumulativeAmount Decimal @default(0) @db.Decimal(18, 2)
+  cumulativePct    Decimal @default(0) @db.Decimal(7, 4) // 0–100
+
+  notes     String?
+  approvedAt DateTime?
+  paidAt     DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project Project        @relation(fields: [projectId], references: [id])
+  budget  OfficialBudget @relation(fields: [budgetId], references: [id])
+  lines   CertificateLine[]
+
+  @@unique([projectId, number])
+  @@index([tenantId])
+  @@index([projectId])
+  @@map("project_certificates")
+}
+
+model CertificateLine {
+  id            String @id @default(uuid())
+  certificateId String
+  budgetLineId  String
+  description   String
+  unit          String @default("GL")
+
+  /// Quantities
+  totalQuantityBudgeted Decimal @db.Decimal(18, 4)
+  previousQuantity      Decimal @default(0) @db.Decimal(18, 4)
+  currentQuantity       Decimal @db.Decimal(18, 4)
+  cumulativeQuantity    Decimal @db.Decimal(18, 4)
+
+  unitCost          Decimal @db.Decimal(18, 4)
+  currentAmount     Decimal @db.Decimal(18, 2)
+  cumulativeAmount  Decimal @db.Decimal(18, 2)
+  /// % of budgeted quantity executed cumulatively
+  executedPct       Decimal @default(0) @db.Decimal(7, 4)
+
+  certificate ProjectCertificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  budgetLine  BudgetLine         @relation(fields: [budgetLineId], references: [id])
+
+  @@index([certificateId])
+  @@index([budgetLineId])
+  @@map("certificate_lines")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIQUIDACIÓN FINAL
+// ═══════════════════════════════════════════════════════════════
+
+enum LiquidationStatus {
+  DRAFT
+  FINAL
+}
+
+enum DeductionType {
+  RETENCION_GARANTIA   // Retención de garantía acumulada
+  ANTICIPO             // Descuento de anticipo recibido
+  MULTA                // Multas por incumplimiento
+  RETENCION_FUENTE     // Retención en la fuente sobre contrato
+  RETEICA              // Retención de ICA
+  DESCUENTO_PRESTAMO   // Préstamos y anticipos al contratista
+  OTHER
+}
+
+model ProjectLiquidation {
+  id        String             @id @default(uuid())
+  tenantId  String
+  projectId String
+  budgetId  String
+  status    LiquidationStatus  @default(DRAFT)
+
+  liquidationDate DateTime
+
+  /// Financial summary
+  contractValue     Decimal @db.Decimal(18, 2) // valor del contrato
+  additionsValue    Decimal @default(0) @db.Decimal(18, 2) // adiciones
+  totalContractValue Decimal @db.Decimal(18, 2) // contractValue + addiciones
+
+  totalExecuted     Decimal @db.Decimal(18, 2) // sum of approved certificates
+  totalRetained     Decimal @default(0) @db.Decimal(18, 2) // retención garantía acumulada
+  totalDeductions   Decimal @default(0) @db.Decimal(18, 2) // other deductions
+  netBalance        Decimal @db.Decimal(18, 2) // totalExecuted - totalRetained - totalDeductions
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project    Project              @relation(fields: [projectId], references: [id])
+  budget     OfficialBudget       @relation(fields: [budgetId], references: [id])
+  deductions LiquidationDeduction[]
+
+  @@unique([projectId])
+  @@index([tenantId])
+  @@map("project_liquidations")
+}
+
+model LiquidationDeduction {
+  id             String        @id @default(uuid())
+  liquidationId  String
+  type           DeductionType
+  description    String
+  amount         Decimal       @db.Decimal(18, 2)
+
+  liquidation ProjectLiquidation @relation(fields: [liquidationId], references: [id], onDelete: Cascade)
+
+  @@index([liquidationId])
+  @@map("liquidation_deductions")
 }
