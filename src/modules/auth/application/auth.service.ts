@@ -40,6 +40,13 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const permissions = (user.role?.permissions as string[]) ?? [];
+
+    // Fetch tenant info so the frontend can display the company name
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: { id: true, name: true, slug: true, plan: true },
+    });
+
     return {
       access_token: this.issueToken(user.id, user.email, user.tenantId, permissions),
       user: {
@@ -50,6 +57,7 @@ export class AuthService {
         tenantId: user.tenantId,
         permissions,
       },
+      tenant,
     };
   }
 

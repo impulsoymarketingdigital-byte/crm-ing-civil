@@ -1,0 +1,280 @@
+# ==============================================================================
+# NetSuite-Clone API — Suite Completa de Tests Manuales
+# Extensión recomendada: REST Client (humao.rest-client) de VS Code
+# Instrucciones: Ejecuta en orden del 1 al 11 haciendo clic en "Send Request".
+# ==============================================================================
+
+@base = http://localhost:4000/api/v1
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PASO 1 — Autenticación
+# ──────────────────────────────────────────────────────────────────────────────
+
+### 1. Registrar nuevo Tenant + Admin (guarda la respuesta: @name)
+# @name register
+POST {{base}}/auth/register
+Content-Type: application/json
+
+{
+  "tenant": {
+    "name": "Mi Empresa SAS",
+    "slug": "mi-empresa",
+    "plan": "pro"
+  },
+  "admin": {
+    "email": "admin@miempresa.com",
+    "password": "Admin1234!",
+    "firstName": "Juan",
+    "lastName": "Pérez"
+  }
+}
+
+### 2. Login — captura token automáticamente
+# @name login
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "tenantId": "2c74a048-9f89-4c36-94cf-28dfca272668",
+  "email": "admin@miempresa.com",
+  "password": "Admin1234!"
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PASO 3 — Plan de Cuentas (necesarias para facturas y asientos)
+# ──────────────────────────────────────────────────────────────────────────────
+
+### 3.1 Cuentas por Cobrar (ASSET — se debita en facturas de venta)
+# @name accountAR
+POST {{base}}/accounts
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "code": "1100",
+  "name": "Cuentas por Cobrar",
+  "type": "ASSET",
+  "tenantId": "{{login.response.body.user.tenantId}}"
+}
+
+### 3.2 Ingresos por Ventas (REVENUE — se acredita en facturas de venta)
+# @name accountRevenue
+POST {{base}}/accounts
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "code": "4100",
+  "name": "Ingresos por Ventas",
+  "type": "REVENUE",
+  "tenantId": "{{login.response.body.user.tenantId}}"
+}
+
+### 3.3 IVA por Pagar (LIABILITY — se acredita por el impuesto de ventas)
+# @name accountTax
+POST {{base}}/accounts
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "code": "2300",
+  "name": "IVA por Pagar",
+  "type": "LIABILITY",
+  "tenantId": "{{login.response.body.user.tenantId}}"
+}
+
+### 3.4 Gastos Generales (EXPENSE — para asientos manuales y OCR de IA)
+# @name accountExpense
+POST {{base}}/accounts
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "code": "5100",
+  "name": "Gastos Generales",
+  "type": "EXPENSE",
+  "tenantId": "{{login.response.body.user.tenantId}}"
+}
+
+### 3.5 Proveedores Nacionales (LIABILITY — para OCR de facturas de proveedor)
+# @name accountPayable
+POST {{base}}/accounts
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "code": "2100",
+  "name": "Proveedores Nacionales",
+  "type": "LIABILITY",
+  "tenantId": "{{login.response.body.user.tenantId}}"
+}
+
+### 3.6 Listar todas las cuentas creadas
+GET {{base}}/accounts
+Authorization: Bearer {{login.response.body.access_token}}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PASO 4 — Inventario
+# ──────────────────────────────────────────────────────────────────────────────
+
+### 4.1 Crear un producto en inventario
+# @name createProduct
+POST {{base}}/inventory
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "sku": "LAPTOP-001",
+  "name": "Laptop Corporativa",
+  "type": "PRODUCT",
+  "unitOfMeasure": "UND",
+  "sellingPrice": 3500000
+}
+
+### 4.2 Entrada de stock — 50 unidades a $2.100.000 c/u (recalcula WAC)
+POST {{base}}/inventory/{{createProduct.response.body.id}}/stock/entry
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "quantity": 50,
+  "unitCost": 2100000,
+  "reference": "OC-2024-001",
+  "notes": "Compra inicial a proveedor"
+}
+
+### 4.3 Salida de stock — 2 unidades (verifica existencias)
+POST {{base}}/inventory/{{createProduct.response.body.id}}/stock/exit
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "quantity": 2,
+  "notes": "Muestra comercial"
+}
+
+### 4.4 Reporte de valoración de inventario (qty × WAC)
+GET {{base}}/inventory/stock/valuation
+Authorization: Bearer {{login.response.body.access_token}}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PASO 5 — Clientes
+# ──────────────────────────────────────────────────────────────────────────────
+
+### 5.1 Crear un cliente
+# @name createCustomer
+POST {{base}}/customers
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "code": "CUST-001",
+  "name": "Cliente de Prueba LTDA",
+  "email": "contacto@clienteprueba.com",
+  "phone": "+573001234567",
+  "taxId": "900.123.456-7"
+}
+
+### 5.2 Listar clientes
+GET {{base}}/customers
+Authorization: Bearer {{login.response.body.access_token}}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PASO 6 — Facturas (flujo completo DRAFT → ISSUED)
+# ──────────────────────────────────────────────────────────────────────────────
+
+### 6.1 Crear factura en borrador (DRAFT)
+# @name createInvoice
+POST {{base}}/invoices
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "customerId": "{{createCustomer.response.body.id}}",
+  "number": "FAC-2024-0001",
+  "dueDate": "2026-06-30",
+  "taxRate": 0.19,
+  "lines": [
+    {
+      "inventoryItemId": "{{createProduct.response.body.id}}",
+      "description": "Laptop Corporativa",
+      "quantity": 5,
+      "unitPrice": 3500000
+    }
+  ]
+}
+
+### 6.2 Listar facturas
+GET {{base}}/invoices
+Authorization: Bearer {{login.response.body.access_token}}
+
+### 6.3 EMITIR factura — transacción atómica:
+###    1) Descuenta stock del inventario
+###    2) Genera asiento contable auto-POSTED (Dr CxC / Cr Ingresos / Cr IVA)
+###    3) Cambia estado DRAFT → ISSUED
+POST {{base}}/invoices/{{createInvoice.response.body.id}}/issue
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "arAccountId":      "9ec05585-2317-4869-920c-e50075a9bdc8",
+  "revenueAccountId": "bdc0907b-61ef-4f93-b00a-18563d947481",
+  "taxAccountId":     "1aa42608-f722-46dc-b0ff-c3457739a573"
+}
+
+### 6.4 Ver factura emitida con su asiento vinculado
+GET {{base}}/invoices/{{createInvoice.response.body.id}}
+Authorization: Bearer {{login.response.body.access_token}}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PASO 7 — Ledger (asiento manual)
+# ──────────────────────────────────────────────────────────────────────────────
+
+### 7.1 Registrar asiento contable manual (Σ débitos = Σ créditos obligatorio)
+POST {{base}}/ledger/entries
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "reference": "AJ-2024-001",
+  "description": "Ajuste contable mensual",
+  "date": "2026-05-29",
+  "lines": [
+    {
+      "accountId": "7ae03fb6-712c-48c7-aed3-6cc08b991fa1",
+      "description": "Gasto reconocido",
+      "debit": 150000,
+      "credit": 0
+    },
+    {
+      "accountId": "2ae5db1f-ccf7-4405-a77f-03ad81450018",
+      "description": "Obligación con proveedor",
+      "debit": 0,
+      "credit": 150000
+    }
+  ]
+}
+
+### 7.2 Balance de Comprobación consolidado
+GET {{base}}/ledger/trial-balance
+Authorization: Bearer {{login.response.body.access_token}}
+
+### 7.3 Balance filtrado por rango de fechas
+GET {{base}}/ledger/trial-balance?dateFrom=2026-01-01&dateTo=2026-12-31
+Authorization: Bearer {{login.response.body.access_token}}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PASO 8 — IA: OCR de Factura de Proveedor → Asiento Contable automático
+# Requiere ANTHROPIC_API_KEY real en el archivo .env
+# ──────────────────────────────────────────────────────────────────────────────
+
+### 8. Procesar texto OCR y generar asiento borrador automáticamente
+POST {{base}}/ai/invoice-ocr
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "ocrText": "Proveedor: Suministros ABC S.A.S\nNIT: 800.234.567-1\nFactura No: F-2024-0123\nFecha: 2026-05-29\nDescripcion: Materiales de oficina y papelería\nSubtotal: $500.000\nIVA 19%: $95.000\nTotal a pagar: $595.000",
+  "expenseAccountId": "7ae03fb6-712c-48c7-aed3-6cc08b991fa1",
+  "payableAccountId": "2ae5db1f-ccf7-4405-a77f-03ad81450018"
+}
