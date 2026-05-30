@@ -29,6 +29,7 @@ model Tenant {
   stockTransactions  StockTransaction[]
   customers          Customer[]
   invoices           Invoice[]
+  projects           Project[]
 
   @@map("tenants")
 }
@@ -330,4 +331,141 @@ model InvoiceLine {
 
   @@index([invoiceId])
   @@map("invoice_lines")
+}
+
+// ─────────────────────────────────────────────
+// PROJECTS (Ingeniería Civil)
+// ─────────────────────────────────────────────
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  tenantId    String
+  code        String
+  name        String
+  description String?
+  status      ProjectStatus @default(PLANNING)
+  clientName  String?
+  location    String?
+
+  /// Contract value (base, before AIU)
+  contractValue Decimal @default(0) @db.Decimal(18, 2)
+
+  /// AIU percentages (stored as decimals, e.g. 0.10 = 10%)
+  adminPct   Decimal @default(0) @db.Decimal(7, 6) // Administración
+  riskPct    Decimal @default(0) @db.Decimal(7, 6) // Imprevistos
+  profitPct  Decimal @default(0) @db.Decimal(7, 6) // Utilidad
+
+  /// Computed totals (persisted for reporting)
+  adminAmount   Decimal @default(0) @db.Decimal(18, 2)
+  riskAmount    Decimal @default(0) @db.Decimal(18, 2)
+  profitAmount  Decimal @default(0) @db.Decimal(18, 2)
+  aiuAmount     Decimal @default(0) @db.Decimal(18, 2) // sum of the three
+  totalValue    Decimal @default(0) @db.Decimal(18, 2) // contractValue + aiuAmount
+
+  startDate    DateTime?
+  endDate      DateTime?
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  phases  ProjectPhase[]
+  budgets ProjectBudget[]
+  aiuBreakdowns AiuBreakdown[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("projects")
+}
+
+// ─────────────────────────────────────────────
+// PROJECT PHASES
+// ─────────────────────────────────────────────
+model ProjectPhase {
+  id          String   @id @default(uuid())
+  projectId   String
+  name        String
+  description String?
+  order       Int      @default(0)
+  /// Planned percentage of total work (0-100)
+  plannedPct  Decimal  @default(0) @db.Decimal(5, 2)
+  /// Actual completion percentage (0-100)
+  actualPct   Decimal  @default(0) @db.Decimal(5, 2)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_phases")
+}
+
+// ─────────────────────────────────────────────
+// PROJECT BUDGET LINES (Análisis de Precios Unitarios)
+// ─────────────────────────────────────────────
+enum BudgetCategory {
+  MATERIALS    // Materiales
+  LABOR        // Mano de obra
+  EQUIPMENT    // Equipos
+  SUBCONTRACT  // Subcontratos
+  OTHER        // Otros directos
+}
+
+model ProjectBudget {
+  id          String         @id @default(uuid())
+  projectId   String
+  category    BudgetCategory
+  description String
+  unit        String         @default("GL") // Unidad de medida
+  quantity    Decimal        @db.Decimal(18, 4)
+  unitCost    Decimal        @db.Decimal(18, 2)
+  totalCost   Decimal        @db.Decimal(18, 2) // quantity × unitCost
+  /// Actual spent (updated via progress entries)
+  actualCost  Decimal        @default(0) @db.Decimal(18, 2)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, category])
+  @@map("project_budgets")
+}
+
+// ─────────────────────────────────────────────
+// AIU BREAKDOWN (audit trail per contract)
+// ─────────────────────────────────────────────
+model AiuBreakdown {
+  id          String   @id @default(uuid())
+  projectId   String
+  version     Int      @default(1)
+  description String?
+
+  contractValue Decimal @db.Decimal(18, 2)
+  adminPct      Decimal @db.Decimal(7, 6)
+  riskPct       Decimal @db.Decimal(7, 6)
+  profitPct     Decimal @db.Decimal(7, 6)
+  adminAmount   Decimal @db.Decimal(18, 2)
+  riskAmount    Decimal @db.Decimal(18, 2)
+  profitAmount  Decimal @db.Decimal(18, 2)
+  aiuAmount     Decimal @db.Decimal(18, 2)
+  totalValue    Decimal @db.Decimal(18, 2)
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("aiu_breakdowns")
 }
