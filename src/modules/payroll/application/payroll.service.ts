@@ -170,6 +170,7 @@ export class PayrollService {
         year: dto.year,
         month: dto.month,
         fortnight,
+        status: 'DRAFT',
         startDate,
         endDate,
         baseSalary,

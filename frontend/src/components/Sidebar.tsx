@@ -2,16 +2,24 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, FileText, Package, BookOpen,
   BarChart3, Bot, LogOut, Building2,
+  FolderOpen, Users, Calculator, ClipboardList, DollarSign, Search,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const nav = [
-  { to: '/',            icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/invoices',    icon: FileText,         label: 'Facturas' },
-  { to: '/inventory',   icon: Package,          label: 'Inventario' },
-  { to: '/accounts',    icon: BookOpen,         label: 'Cuentas' },
-  { to: '/trial-balance', icon: BarChart3,      label: 'Balance' },
-  { to: '/ai-ocr',      icon: Bot,              label: 'IA · OCR' },
+  { to: '/',              icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/invoices',      icon: FileText,         label: 'Facturas' },
+  { to: '/inventory',     icon: Package,          label: 'Inventario' },
+  { to: '/accounts',      icon: BookOpen,         label: 'Cuentas' },
+  { to: '/trial-balance', icon: BarChart3,        label: 'Balance' },
+  { to: '/ai-ocr',        icon: Bot,              label: 'IA · OCR' },
+  { to: '/projects',      icon: FolderOpen,       label: 'Proyectos' },
+  { to: '/payroll',       icon: Users,            label: 'Nómina' },
+  { to: '/apu',           icon: Calculator,       label: 'APU' },
+  { to: '/budgets',       icon: FileText,         label: 'Presupuestos' },
+  { to: '/certificates',  icon: ClipboardList,    label: 'Actas de Avance' },
+  { to: '/liquidation',   icon: DollarSign,       label: 'Liquidación' },
+  { to: '/secop',         icon: Search,           label: 'SECOP' },
 ]
 
 export default function Sidebar() {

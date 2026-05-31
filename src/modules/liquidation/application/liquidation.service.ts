@@ -54,6 +54,7 @@ export class LiquidationService {
         tenantId,
         projectId:        dto.projectId,
         budgetId:         dto.budgetId,
+        status:           'DRAFT',
         liquidationDate:  new Date(dto.liquidationDate),
         contractValue:    dto.contractValue,
         additionsValue,

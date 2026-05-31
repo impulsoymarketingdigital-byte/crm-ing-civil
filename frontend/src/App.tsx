@@ -8,6 +8,13 @@ import InventoryPage from './pages/InventoryPage'
 import AccountsPage from './pages/AccountsPage'
 import TrialBalancePage from './pages/TrialBalancePage'
 import AiOcrPage from './pages/AiOcrPage'
+import ProjectsPage from './pages/ProjectsPage'
+import PayrollPage from './pages/PayrollPage'
+import ApuPage from './pages/ApuPage'
+import BudgetPage from './pages/BudgetPage'
+import CertificatesPage from './pages/CertificatesPage'
+import LiquidationPage from './pages/LiquidationPage'
+import SecopPage from './pages/SecopPage'
 
 function Layout() {
   const { isAuthenticated } = useAuth()
@@ -34,6 +41,13 @@ function ProtectedApp() {
           <Route path="/accounts"      element={<AccountsPage />} />
           <Route path="/trial-balance" element={<TrialBalancePage />} />
           <Route path="/ai-ocr"        element={<AiOcrPage />} />
+          <Route path="/projects"      element={<ProjectsPage />} />
+          <Route path="/payroll"       element={<PayrollPage />} />
+          <Route path="/apu"           element={<ApuPage />} />
+          <Route path="/budgets"       element={<BudgetPage />} />
+          <Route path="/certificates"  element={<CertificatesPage />} />
+          <Route path="/liquidation"   element={<LiquidationPage />} />
+          <Route path="/secop"         element={<SecopPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

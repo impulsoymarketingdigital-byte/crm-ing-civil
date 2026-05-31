@@ -17,6 +17,8 @@ import { ApuModule } from './modules/apu/apu.module';
 import { BudgetModule } from './modules/budget/budget.module';
 import { CertificatesModule } from './modules/certificates/certificates.module';
 import { LiquidationModule } from './modules/liquidation/liquidation.module';
+import { PdfModule } from './modules/pdf/pdf.module';
+import { SecopModule } from './modules/secop/secop.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -42,6 +44,8 @@ import { RolesGuard } from './common/guards/roles.guard';
     BudgetModule,
     CertificatesModule,
     LiquidationModule,
+    PdfModule,
+    SecopModule,
   ],
   providers: [
     // 1. Validate JWT on every request (skip @Public() routes)
