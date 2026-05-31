@@ -3,6 +3,8 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { TenantId } from '../../../common/decorators/tenant.decorator';
+import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
+import { Permission } from '../../../common/constants/permissions.constants';
 import { ProjectService } from '../application/project.service';
 import { CreateProjectDto } from '../domain/dto/create-project.dto';
 import { UpdateProjectDto } from '../domain/dto/update-project.dto';
@@ -15,83 +17,53 @@ import { AiuCalculateDto } from '../domain/dto/aiu-calculate.dto';
 export class ProjectsController {
   constructor(private readonly svc: ProjectService) {}
 
-  // ── Projects ──────────────────────────────────────────────────────────────
-
-  @Get()
+  @Get() @RequirePermissions(Permission.PROJECT_READ)
   findAll(@TenantId() tenantId: string) {
     return this.svc.findAll(tenantId);
   }
 
-  @Get(':id')
+  @Get(':id') @RequirePermissions(Permission.PROJECT_READ)
   findOne(@Param('id', ParseUUIDPipe) id: string, @TenantId() tenantId: string) {
     return this.svc.findOne(id, tenantId);
   }
 
-  @Post()
+  @Post() @RequirePermissions(Permission.PROJECT_WRITE)
   create(@Body() dto: CreateProjectDto, @TenantId() tenantId: string) {
     return this.svc.create(tenantId, dto);
   }
 
-  @Patch(':id')
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateProjectDto,
-    @TenantId() tenantId: string,
-  ) {
+  @Patch(':id') @RequirePermissions(Permission.PROJECT_WRITE)
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProjectDto, @TenantId() tenantId: string) {
     return this.svc.update(id, tenantId, dto);
   }
 
-  // ── AIU ───────────────────────────────────────────────────────────────────
-
-  /** Calculates AIU in-memory — no DB write */
-  @Post('aiu/calculate')
+  @Post('aiu/calculate') @RequirePermissions(Permission.PROJECT_READ)
   calculateAiu(@Body() dto: AiuCalculateDto) {
     return this.svc.calculateAiu(dto);
   }
 
-  /** Persists an AIU breakdown version for a project */
-  @Post(':id/aiu')
-  saveAiu(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: AiuCalculateDto & { description?: string },
-    @TenantId() tenantId: string,
-  ) {
+  @Post(':id/aiu') @RequirePermissions(Permission.PROJECT_WRITE)
+  saveAiu(@Param('id', ParseUUIDPipe) id: string, @Body() body: AiuCalculateDto & { description?: string }, @TenantId() tenantId: string) {
     const { description, ...dto } = body;
     return this.svc.saveAiuBreakdown(id, tenantId, dto, description);
   }
 
-  // ── Phases ────────────────────────────────────────────────────────────────
-
-  @Post(':id/phases')
-  addPhase(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: CreatePhaseDto,
-    @TenantId() tenantId: string,
-  ) {
+  @Post(':id/phases') @RequirePermissions(Permission.PROJECT_WRITE)
+  addPhase(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreatePhaseDto, @TenantId() tenantId: string) {
     return this.svc.addPhase(id, tenantId, dto);
   }
 
-  @Patch('phases/:phaseId/progress')
-  updateProgress(
-    @Param('phaseId', ParseUUIDPipe) phaseId: string,
-    @Body('actualPct') actualPct: number,
-    @TenantId() tenantId: string,
-  ) {
+  @Patch('phases/:phaseId/progress') @RequirePermissions(Permission.PROJECT_WRITE)
+  updateProgress(@Param('phaseId', ParseUUIDPipe) phaseId: string, @Body('actualPct') actualPct: number, @TenantId() tenantId: string) {
     return this.svc.updatePhaseProgress(phaseId, tenantId, actualPct);
   }
 
-  // ── Budget ────────────────────────────────────────────────────────────────
-
-  @Post(':id/budget')
-  addBudget(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: CreateBudgetDto,
-    @TenantId() tenantId: string,
-  ) {
+  @Post(':id/budget') @RequirePermissions(Permission.PROJECT_WRITE)
+  addBudget(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateBudgetDto, @TenantId() tenantId: string) {
     return this.svc.addBudgetLine(id, tenantId, dto);
   }
 
-  @Get(':id/budget/summary')
+  @Get(':id/budget/summary') @RequirePermissions(Permission.PROJECT_READ)
   budgetSummary(@Param('id', ParseUUIDPipe) id: string, @TenantId() tenantId: string) {
     return this.svc.getBudgetSummary(id, tenantId);
   }
