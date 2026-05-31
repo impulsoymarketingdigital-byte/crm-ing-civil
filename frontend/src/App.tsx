@@ -15,6 +15,10 @@ import BudgetPage from './pages/BudgetPage'
 import CertificatesPage from './pages/CertificatesPage'
 import LiquidationPage from './pages/LiquidationPage'
 import SecopPage from './pages/SecopPage'
+import ContabilidadPage from './pages/ContabilidadPage'
+import ProveedoresPage from './pages/ProveedoresPage'
+import CajaPage from './pages/CajaPage'
+import ImpuestosPage from './pages/ImpuestosPage'
 
 function Layout() {
   const { isAuthenticated } = useAuth()
@@ -48,6 +52,10 @@ function ProtectedApp() {
           <Route path="/certificates"  element={<CertificatesPage />} />
           <Route path="/liquidation"   element={<LiquidationPage />} />
           <Route path="/secop"         element={<SecopPage />} />
+          <Route path="/contabilidad"  element={<ContabilidadPage />} />
+          <Route path="/proveedores"   element={<ProveedoresPage />} />
+          <Route path="/caja"          element={<CajaPage />} />
+          <Route path="/impuestos"     element={<ImpuestosPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

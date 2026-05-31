@@ -19,6 +19,10 @@ import { CertificatesModule } from './modules/certificates/certificates.module';
 import { LiquidationModule } from './modules/liquidation/liquidation.module';
 import { PdfModule } from './modules/pdf/pdf.module';
 import { SecopModule } from './modules/secop/secop.module';
+import { AccountingModule } from './modules/accounting/accounting.module';
+import { PayablesModule } from './modules/payables/payables.module';
+import { PettyCashModule } from './modules/petty-cash/petty-cash.module';
+import { TaxesModule } from './modules/taxes/taxes.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -46,6 +50,10 @@ import { RolesGuard } from './common/guards/roles.guard';
     LiquidationModule,
     PdfModule,
     SecopModule,
+    AccountingModule,
+    PayablesModule,
+    PettyCashModule,
+    TaxesModule,
   ],
   providers: [
     // 1. Validate JWT on every request (skip @Public() routes)
