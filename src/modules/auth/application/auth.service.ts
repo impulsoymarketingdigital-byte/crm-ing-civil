@@ -1,6 +1,8 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -18,46 +20,60 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  // ── Validate credentials ─────────────────────────────────────────────
-  async validateUser(email: string, password: string, tenantId: string) {
-    const user = await this.prisma.user.findFirst({
-      where: { email, tenantId, isActive: true },
-      include: { role: { select: { permissions: true } } },
-    });
+  // ── Resolve tenant from slug or id ───────────────────────────────────
+  private async resolveTenant(slug?: string, tenantId?: string) {
+    if (!slug && !tenantId) {
+      throw new UnauthorizedException('Se requiere slug de empresa o tenantId');
+    }
+    const tenant = slug
+      ? await this.prisma.tenant.findUnique({ where: { slug } })
+      : await this.prisma.tenant.findUnique({ where: { id: tenantId! } });
 
-    if (!user) return null;
-
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) return null;
-
-    const { passwordHash: _, ...safeUser } = user;
-    return safeUser;
+    if (!tenant) throw new UnauthorizedException('Empresa no encontrada');
+    if (!tenant.isActive) throw new UnauthorizedException('Esta empresa está desactivada');
+    return tenant;
   }
 
   // ── Login ─────────────────────────────────────────────────────────────
   async login(dto: LoginDto) {
-    const user = await this.validateUser(dto.email, dto.password, dto.tenantId);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    const tenant = await this.resolveTenant(dto.slug, dto.tenantId);
+
+    const user = await this.prisma.user.findFirst({
+      where: { email: dto.email, tenantId: tenant.id, isActive: true },
+      include: { role: { select: { permissions: true, name: true } } },
+    });
+
+    if (!user) throw new UnauthorizedException('Credenciales inválidas');
+
+    const valid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('Credenciales inválidas');
+
+    // Update last login
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
 
     const permissions = (user.role?.permissions as string[]) ?? [];
 
-    // Fetch tenant info so the frontend can display the company name
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: user.tenantId },
-      select: { id: true, name: true, slug: true, plan: true },
-    });
-
     return {
-      access_token: this.issueToken(user.id, user.email, user.tenantId, permissions),
+      access_token: this.issueToken(user.id, user.email, tenant.id, permissions),
       user: {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        tenantId: user.tenantId,
+        tenantId: tenant.id,
+        roleId: user.roleId,
+        roleName: user.role?.name,
         permissions,
       },
-      tenant,
+      tenant: {
+        id: tenant.id,
+        name: tenant.name,
+        slug: tenant.slug,
+        plan: tenant.plan,
+      },
     };
   }
 
@@ -67,50 +83,27 @@ export class AuthService {
       where: { slug: dto.tenant.slug },
     });
     if (slugTaken) {
-      throw new ConflictException(`Slug "${dto.tenant.slug}" is already taken`);
+      throw new ConflictException(`El slug "${dto.tenant.slug}" ya está en uso`);
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
-      // 1. Create tenant
       const tenant = await tx.tenant.create({
-        data: {
-          name: dto.tenant.name,
-          slug: dto.tenant.slug,
-          plan: dto.tenant.plan ?? 'free',
-        },
+        data: { name: dto.tenant.name, slug: dto.tenant.slug, plan: dto.tenant.plan ?? 'pro' },
       });
 
-      // 2. Create default ADMIN role for this tenant
-      const adminRole = await tx.role.create({
-        data: {
+      // Seed all predefined roles for this new tenant
+      const roleNames = ['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT', 'PAYROLL_MANAGER',
+                         'ESTIMATOR', 'INVENTORY_MANAGER', 'SALES_REP', 'VIEWER'];
+      const roleRecords = await tx.role.createManyAndReturn({
+        data: roleNames.map(name => ({
           tenantId: tenant.id,
-          name: 'ADMIN',
-          permissions: ROLE_PERMISSIONS['ADMIN'],
-        },
+          name,
+          permissions: ROLE_PERMISSIONS[name] ?? [],
+        })),
       });
 
-      // Also seed ACCOUNTANT and INVENTORY_MANAGER roles
-      await tx.role.createMany({
-        data: [
-          {
-            tenantId: tenant.id,
-            name: 'ACCOUNTANT',
-            permissions: ROLE_PERMISSIONS['ACCOUNTANT'],
-          },
-          {
-            tenantId: tenant.id,
-            name: 'INVENTORY_MANAGER',
-            permissions: ROLE_PERMISSIONS['INVENTORY_MANAGER'],
-          },
-          {
-            tenantId: tenant.id,
-            name: 'VIEWER',
-            permissions: ROLE_PERMISSIONS['VIEWER'],
-          },
-        ],
-      });
+      const adminRole = roleRecords.find(r => r.name === 'ADMIN')!;
 
-      // 3. Create admin user
       const passwordHash = await bcrypt.hash(dto.admin.password, 12);
       const user = await tx.user.create({
         data: {
@@ -128,10 +121,7 @@ export class AuthService {
 
     return {
       access_token: this.issueToken(
-        result.user.id,
-        result.user.email,
-        result.tenant.id,
-        result.permissions,
+        result.user.id, result.user.email, result.tenant.id, result.permissions,
       ),
       user: {
         id: result.user.id,
@@ -150,13 +140,43 @@ export class AuthService {
     };
   }
 
-  // ── Internal token issuer ────────────────────────────────────────────
-  private issueToken(
-    userId: string,
-    email: string,
-    tenantId: string,
-    permissions: string[],
-  ): string {
+  // ── Get current user profile ──────────────────────────────────────────
+  async getMe(userId: string, tenantId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId },
+      include: { role: { select: { name: true, permissions: true } } },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    const { passwordHash: _, ...safe } = user;
+    return safe;
+  }
+
+  // ── Update own profile (name only) ───────────────────────────────────
+  async updateProfile(userId: string, tenantId: string, firstName: string, lastName: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { firstName, lastName },
+      select: { id: true, email: true, firstName: true, lastName: true, updatedAt: true },
+    });
+  }
+
+  // ── Change own password ───────────────────────────────────────────────
+  async changePassword(userId: string, tenantId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findFirst({ where: { id: userId, tenantId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new BadRequestException('La contraseña actual es incorrecta');
+
+    if (newPassword.length < 8) throw new BadRequestException('La nueva contraseña debe tener al menos 8 caracteres');
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    return { message: 'Contraseña actualizada exitosamente' };
+  }
+
+  // ── Internal ──────────────────────────────────────────────────────────
+  private issueToken(userId: string, email: string, tenantId: string, permissions: string[]): string {
     const payload: JwtPayload = { sub: userId, email, tenantId, permissions };
     return this.jwt.sign(payload);
   }

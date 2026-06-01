@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Building2, Loader2 } from 'lucide-react'
@@ -7,7 +7,7 @@ import { Building2, Loader2 } from 'lucide-react'
 export default function LoginPage() {
   const { login } = useAuth()
   const nav = useNavigate()
-  const [form, setForm] = useState({ tenantId: '', email: '', password: '' })
+  const [form, setForm] = useState({ slug: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -17,7 +17,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { data } = await api.post('/auth/login', form)
-      const tenant = data.tenant ?? { id: data.user.tenantId, name: data.user.tenantId.slice(0,8), slug: '', plan: 'pro' }
+      const tenant = data.tenant ?? { id: data.user.tenantId, name: form.slug, slug: form.slug, plan: 'pro' }
       login(data.access_token, data.user, tenant)
       nav('/')
     } catch (err: any) {
@@ -36,21 +36,24 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4">
             <Building2 size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white">NetSuite Clone</h1>
+          <h1 className="text-3xl font-bold text-white">CRM Ing. Civil</h1>
           <p className="text-gray-400 mt-1">Micro-ERP · Inicia sesión</p>
         </div>
 
         {/* Card */}
         <form onSubmit={submit} className="bg-gray-800 rounded-2xl p-8 shadow-2xl space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">Tenant ID</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Nombre de empresa / Slug</label>
             <input
               className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 text-sm"
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              value={form.tenantId}
-              onChange={e => setForm({ ...form, tenantId: e.target.value })}
+              placeholder="constructora-demo"
+              value={form.slug}
+              onChange={e => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
               required
             />
+            <p className="text-xs text-gray-500 mt-1.5">
+              El slug es el identificador único de tu empresa (solo minúsculas, sin espacios)
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
@@ -89,8 +92,11 @@ export default function LoginPage() {
             {loading ? <><Loader2 size={18} className="animate-spin" /> Ingresando...</> : 'Ingresar'}
           </button>
 
-          <p className="text-xs text-gray-500 text-center">
-            Tenant ID: <span className="text-gray-400">2c74a048-9f89-4c36-94cf-28dfca272668</span>
+          <p className="text-center text-sm text-gray-500">
+            ¿Empresa nueva?{' '}
+            <Link to="/register" className="text-indigo-400 hover:text-indigo-300 transition-colors">
+              Registrar nueva empresa →
+            </Link>
           </p>
         </form>
       </div>

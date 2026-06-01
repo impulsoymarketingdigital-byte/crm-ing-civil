@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar from './components/Sidebar'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import InvoicesPage from './pages/InvoicesPage'
 import InventoryPage from './pages/InventoryPage'
@@ -19,6 +20,8 @@ import ContabilidadPage from './pages/ContabilidadPage'
 import ProveedoresPage from './pages/ProveedoresPage'
 import CajaPage from './pages/CajaPage'
 import ImpuestosPage from './pages/ImpuestosPage'
+import UsersPage from './pages/UsersPage'
+import SettingsPage from './pages/SettingsPage'
 
 function Layout() {
   const { isAuthenticated } = useAuth()
@@ -37,7 +40,8 @@ function ProtectedApp() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login"    element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route element={<Layout />}>
           <Route path="/"              element={<DashboardPage />} />
           <Route path="/invoices"      element={<InvoicesPage />} />
@@ -56,6 +60,8 @@ function ProtectedApp() {
           <Route path="/proveedores"   element={<ProveedoresPage />} />
           <Route path="/caja"          element={<CajaPage />} />
           <Route path="/impuestos"     element={<ImpuestosPage />} />
+          <Route path="/users"         element={<UsersPage />} />
+          <Route path="/settings"      element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

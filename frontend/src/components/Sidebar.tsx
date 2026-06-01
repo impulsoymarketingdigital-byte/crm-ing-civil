@@ -3,7 +3,7 @@ import {
   LayoutDashboard, FileText, Package, BookOpen,
   BarChart3, Bot, LogOut, Building2,
   FolderOpen, Users, Calculator, ClipboardList, DollarSign, Search,
-  Truck, Wallet, Landmark,
+  Truck, Wallet, Landmark, Settings,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -30,6 +30,11 @@ const contabilidadNav = [
   { to: '/trial-balance', icon: BarChart3,        label: 'Balance' },
 ]
 
+const adminNav = [
+  { to: '/users',         icon: Users,            label: 'Usuarios' },
+  { to: '/settings',      icon: Settings,         label: 'Configuración' },
+]
+
 function NavItem({ to, icon: Icon, label }: { to: string; icon: any; label: string }) {
   return (
     <NavLink
@@ -51,6 +56,8 @@ function NavItem({ to, icon: Icon, label }: { to: string; icon: any; label: stri
 
 export default function Sidebar() {
   const { tenant, user, logout } = useAuth()
+
+  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase()
 
   return (
     <aside className="w-64 min-h-screen bg-gray-900 text-white flex flex-col">
@@ -75,16 +82,29 @@ export default function Sidebar() {
           <p className="px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Contabilidad</p>
         </div>
         {contabilidadNav.map(item => <NavItem key={item.to} {...item} />)}
+
+        {/* Admin section */}
+        <div className="pt-4 pb-1">
+          <div className="border-t border-gray-800 mb-3" />
+          <p className="px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Administración</p>
+        </div>
+        {adminNav.map(item => <NavItem key={item.to} {...item} />)}
       </nav>
 
       {/* User footer */}
-      <div className="px-4 py-4 border-t border-gray-800">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-            <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+      <div className="px-4 py-4 border-t border-gray-800 space-y-3">
+        {/* Company + user info */}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-indigo-700 flex items-center justify-center text-white text-xs font-semibold shrink-0">
+            {initials || <Users size={14} />}
           </div>
-          <button onClick={logout} className="text-gray-400 hover:text-red-400 transition-colors">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white truncate">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="text-xs text-gray-400 truncate">{tenant?.name}</p>
+          </div>
+          <button onClick={logout} className="ml-auto text-gray-400 hover:text-red-400 transition-colors shrink-0" title="Cerrar sesión">
             <LogOut size={18} />
           </button>
         </div>
