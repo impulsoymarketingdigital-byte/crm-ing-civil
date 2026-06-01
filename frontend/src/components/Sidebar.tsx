@@ -3,7 +3,7 @@ import {
   LayoutDashboard, FileText, Package, BookOpen,
   BarChart3, Bot, LogOut, Building2,
   FolderOpen, Users, Calculator, ClipboardList, DollarSign, Search,
-  Truck, Wallet, Landmark, Settings,
+  Truck, Wallet, Landmark, Settings, CreditCard,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -32,6 +32,7 @@ const contabilidadNav = [
 
 const adminNav = [
   { to: '/users',         icon: Users,            label: 'Usuarios' },
+  { to: '/billing',       icon: CreditCard,       label: 'Facturación' },
   { to: '/settings',      icon: Settings,         label: 'Configuración' },
 ]
 

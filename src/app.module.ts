@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
@@ -23,6 +24,7 @@ import { AccountingModule } from './modules/accounting/accounting.module';
 import { PayablesModule } from './modules/payables/payables.module';
 import { PettyCashModule } from './modules/petty-cash/petty-cash.module';
 import { TaxesModule } from './modules/taxes/taxes.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -30,8 +32,8 @@ import { RolesGuard } from './common/guards/roles.guard';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    ScheduleModule.forRoot(),   // enables @Cron decorators
     DatabaseModule,
-    // Auth must come before domain modules so the JWT strategy is registered first
     AuthModule,
     TenantsModule,
     UsersModule,
@@ -54,11 +56,10 @@ import { RolesGuard } from './common/guards/roles.guard';
     PayablesModule,
     PettyCashModule,
     TaxesModule,
+    BillingModule,
   ],
   providers: [
-    // 1. Validate JWT on every request (skip @Public() routes)
     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    // 2. Enforce RBAC + cross-tenant isolation on every authenticated request
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })

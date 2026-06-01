@@ -21,6 +21,13 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Billing — fecha en que empieza el ciclo de cobro (por defecto = createdAt)
+  billingStartDate DateTime  @default(now())
+  /// Próxima fecha de cobro (se avanza +30 días después de cada factura generada)
+  nextBillingDate  DateTime  @default(now())
+  /// Email de contacto para envío de facturas
+  billingEmail     String?
+
   users              User[]
   roles              Role[]
   accounts           Account[]
@@ -44,6 +51,7 @@ model Tenant {
   cashDisbursements  CashDisbursement[]
   pettyCashFunds     PettyCashFund[]
   taxObligations     TaxObligation[]
+  billingInvoices    BillingInvoice[]
 
   @@map("tenants")
 }
@@ -1202,4 +1210,51 @@ model TaxObligation {
   @@index([tenantId, type])
   @@index([tenantId, status])
   @@map("tax_obligations")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BILLING — Suscripción $59 USD / 8 usuarios / 30 días
+// ═══════════════════════════════════════════════════════════════
+
+enum BillingStatus {
+  PENDING  // Generada, pendiente de pago
+  PAID     // Pagada
+  OVERDUE  // Vencida sin pagar
+  VOID     // Anulada (plan free, trial, etc.)
+}
+
+model BillingInvoice {
+  id          String        @id @default(uuid())
+  tenantId    String
+  /// Número de factura de suscripción (SUBS-001, SUBS-002…)
+  number      String
+  status      BillingStatus @default(PENDING)
+
+  /// Período que cubre esta factura
+  periodStart DateTime
+  periodEnd   DateTime
+
+  /// Usuarios activos al momento de generar la factura
+  activeUsers Int
+  /// Bloques de 8 usuarios (ceil(activeUsers / 8))
+  units       Int
+  /// Precio por bloque (USD)
+  unitPriceUsd Decimal @default(59) @db.Decimal(10, 2)
+  /// Total en USD = units × unitPriceUsd
+  totalUsd    Decimal  @db.Decimal(10, 2)
+
+  dueDate     DateTime
+  paidAt      DateTime?
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, number])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([status, dueDate])
+  @@map("billing_invoices")
 }
