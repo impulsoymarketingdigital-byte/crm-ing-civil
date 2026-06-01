@@ -26,9 +26,11 @@ import { PettyCashModule } from './modules/petty-cash/petty-cash.module';
 import { TaxesModule } from './modules/taxes/taxes.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
+import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { TrialGuard } from './common/guards/trial.guard';
 
 @Module({
   imports: [
@@ -59,10 +61,13 @@ import { RolesGuard } from './common/guards/roles.guard';
     TaxesModule,
     BillingModule,
     SuperAdminModule,
+    SubscriptionModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // TrialGuard runs AFTER JwtAuthGuard — checks trial/subscription status
+    { provide: APP_GUARD, useClass: TrialGuard },
   ],
 })
 export class AppModule {}

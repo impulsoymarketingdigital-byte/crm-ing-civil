@@ -21,11 +21,19 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  /// Billing — fecha en que empieza el ciclo de cobro (por defecto = createdAt)
+  /// ── Trial / Subscription ────────────────────────────────────────────
+  /// Estado de suscripción: trial | active | expired | cancelled | suspended
+  subscriptionStatus   String   @default("trial")
+  /// Vencimiento del período de prueba (now + 5 days on register)
+  trialEndsAt          DateTime?
+  /// Plan activo: monthly | annual | enterprise
+  subscriptionPlan     String?
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+
+  /// ── Billing cycle ────────────────────────────────────────────────────
   billingStartDate DateTime  @default(now())
-  /// Próxima fecha de cobro (se avanza +30 días después de cada factura generada)
   nextBillingDate  DateTime  @default(now())
-  /// Email de contacto para envío de facturas
   billingEmail     String?
 
   users              User[]

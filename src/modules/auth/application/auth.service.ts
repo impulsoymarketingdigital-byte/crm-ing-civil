@@ -77,8 +77,16 @@ export class AuthService {
     if (slugTaken) throw new ConflictException(`El slug "${dto.tenant.slug}" ya está en uso`);
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 5); // 5-day free trial
       const tenant = await tx.tenant.create({
-        data: { name: dto.tenant.name, slug: dto.tenant.slug, plan: dto.tenant.plan ?? 'pro' },
+        data: {
+          name: dto.tenant.name,
+          slug: dto.tenant.slug,
+          plan: 'trial',
+          subscriptionStatus: 'trial',
+          trialEndsAt,
+        },
       });
       const roleNames = ['ADMIN','PROJECT_MANAGER','ACCOUNTANT','PAYROLL_MANAGER',
                          'ESTIMATOR','INVENTORY_MANAGER','SALES_REP','VIEWER'];

@@ -24,6 +24,8 @@ import UsersPage from './pages/UsersPage'
 import SettingsPage from './pages/SettingsPage'
 import BillingPage from './pages/BillingPage'
 import SuperAdminPage from './pages/SuperAdminPage'
+import TrialBanner from './components/TrialBanner'
+import UpgradePage from './pages/UpgradePage'
 
 function Layout() {
   const { isAuthenticated } = useAuth()
@@ -31,8 +33,11 @@ function Layout() {
   return (
     <div className="flex min-h-screen bg-gray-950">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
-        <Outlet />
+      <main className="flex-1 overflow-auto flex flex-col">
+        <TrialBanner />
+        <div className="flex-1">
+          <Outlet />
+        </div>
       </main>
     </div>
   )
@@ -66,7 +71,9 @@ function ProtectedApp() {
           <Route path="/settings"      element={<SettingsPage />} />
           <Route path="/billing"       element={<BillingPage />} />
           <Route path="/super-admin"   element={<SuperAdminPage />} />
+          <Route path="/upgrade"       element={<UpgradePage />} />
         </Route>
+        <Route path="/upgrade" element={<UpgradePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -13,6 +13,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   (err) => {
+    if (err.response?.status === 402) {
+      window.location.href = '/upgrade'
+      return Promise.reject(err)
+    }
     if (err.response?.status === 401) {
       localStorage.clear()
       window.location.href = '/login'

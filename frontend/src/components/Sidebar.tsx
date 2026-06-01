@@ -70,7 +70,19 @@ export default function Sidebar() {
           </div>
           <div>
             <p className="font-bold text-sm leading-tight">{tenant?.name ?? 'NetSuite Clone'}</p>
-            <p className="text-xs text-gray-400 capitalize">{tenant?.plan ?? 'free'}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-xs text-gray-400 capitalize">{tenant?.plan ?? 'free'}</p>
+              {(!tenant?.plan || tenant.plan === 'trial' || tenant.plan === 'free') && (
+                <span className="text-[10px] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-1.5 py-0.5 rounded-full leading-none">
+                  PRUEBA
+                </span>
+              )}
+              {(tenant?.plan === 'monthly' || tenant?.plan === 'annual') && (
+                <span className="text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded-full leading-none">
+                  ACTIVO
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

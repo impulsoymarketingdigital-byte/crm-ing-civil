@@ -25,6 +25,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [registered, setRegistered] = useState(false)
 
   // Step 1
   const [companyName, setCompanyName] = useState('')
@@ -83,7 +84,8 @@ export default function RegisterPage() {
       })
       const tenant = data.tenant ?? { id: '', name: companyName, slug, plan }
       login(data.access_token, data.user, tenant)
-      nav('/')
+      setRegistered(true)
+      setTimeout(() => nav('/'), 2500)
     } catch (err: any) {
       setError(err.response?.data?.message ?? err.message ?? 'Error al registrar la empresa')
     } finally {
@@ -95,13 +97,28 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-gray-900 to-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4">
             <Building2 size={32} className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white">CRM Ing. Civil</h1>
           <p className="text-gray-400 mt-1">Registrar nueva empresa</p>
         </div>
+
+        {/* Trial badge */}
+        <div className="flex justify-center mb-6">
+          <span className="inline-flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-sm font-semibold px-4 py-2 rounded-full">
+            🎁 <strong>5 días gratis</strong>, sin tarjeta de crédito
+          </span>
+        </div>
+
+        {/* Success welcome message */}
+        {registered && (
+          <div className="mb-6 bg-green-900/40 border border-green-600 rounded-xl px-5 py-4 text-center">
+            <p className="text-green-300 font-semibold text-sm">✅ ¡Empresa creada con éxito!</p>
+            <p className="text-green-400/80 text-xs mt-1">Tu prueba gratuita de 5 días ha comenzado. Redirigiendo…</p>
+          </div>
+        )}
 
         {/* Progress indicator */}
         <div className="flex items-center justify-center gap-3 mb-6">
@@ -270,6 +287,9 @@ export default function RegisterPage() {
                   {loading ? <><Loader2 size={18} className="animate-spin" /> Registrando...</> : 'Crear empresa'}
                 </button>
               </div>
+              <p className="text-xs text-gray-500 text-center leading-relaxed">
+                Al registrarte aceptas nuestros términos. Tu prueba incluye acceso completo a todas las funcionalidades.
+              </p>
             </form>
           )}
 
