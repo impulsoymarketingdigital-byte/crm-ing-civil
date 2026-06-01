@@ -40,7 +40,7 @@ export class UsersRepository {
     });
   }
 
-  update(id: string, data: Partial<{ roleId: string; firstName: string; lastName: string; isActive: boolean }>) {
+  update(id: string, data: Partial<{ roleId: string; firstName: string; lastName: string; isActive: boolean; customPermissions: string[] }>) {
     return this.prisma.user.update({
       where: { id },
       data,

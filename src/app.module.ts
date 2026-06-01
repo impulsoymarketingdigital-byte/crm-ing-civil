@@ -25,6 +25,7 @@ import { PayablesModule } from './modules/payables/payables.module';
 import { PettyCashModule } from './modules/petty-cash/petty-cash.module';
 import { TaxesModule } from './modules/taxes/taxes.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -57,6 +58,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     PettyCashModule,
     TaxesModule,
     BillingModule,
+    SuperAdminModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

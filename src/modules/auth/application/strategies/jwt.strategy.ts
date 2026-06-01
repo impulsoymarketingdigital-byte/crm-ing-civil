@@ -14,15 +14,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: JwtPayload): AuthUser {
+  validate(payload: JwtPayload): AuthUser & { sub: string } {
     if (!payload?.sub || !payload?.tenantId) {
-      throw new UnauthorizedException('Invalid token payload');
+      throw new UnauthorizedException('Token inválido');
     }
     return {
-      userId: payload.sub,
-      email: payload.email,
-      tenantId: payload.tenantId,
-      permissions: payload.permissions ?? [],
+      sub:          payload.sub,      // needed by auth.controller CurrentUserId
+      userId:       payload.sub,
+      email:        payload.email,
+      tenantId:     payload.tenantId,
+      permissions:  payload.permissions ?? [],
+      isSuperAdmin: payload.isSuperAdmin ?? false,
     };
   }
 }

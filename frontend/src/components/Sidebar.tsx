@@ -3,7 +3,7 @@ import {
   LayoutDashboard, FileText, Package, BookOpen,
   BarChart3, Bot, LogOut, Building2,
   FolderOpen, Users, Calculator, ClipboardList, DollarSign, Search,
-  Truck, Wallet, Landmark, Settings, CreditCard,
+  Truck, Wallet, Landmark, Settings, CreditCard, ShieldAlert,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -90,6 +90,23 @@ export default function Sidebar() {
           <p className="px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Administración</p>
         </div>
         {adminNav.map(item => <NavItem key={item.to} {...item} />)}
+
+        {/* Super Admin link — only visible to super admins */}
+        {user?.isSuperAdmin && (
+          <NavLink
+            to="/super-admin"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-amber-900/40 text-amber-400 border border-amber-700'
+                  : 'text-amber-400/70 hover:bg-amber-900/20 hover:text-amber-400 border border-transparent hover:border-amber-700/50'
+              }`
+            }
+          >
+            <ShieldAlert size={18} />
+            Super Admin ⚡
+          </NavLink>
+        )}
       </nav>
 
       {/* User footer */}

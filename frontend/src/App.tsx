@@ -23,6 +23,7 @@ import ImpuestosPage from './pages/ImpuestosPage'
 import UsersPage from './pages/UsersPage'
 import SettingsPage from './pages/SettingsPage'
 import BillingPage from './pages/BillingPage'
+import SuperAdminPage from './pages/SuperAdminPage'
 
 function Layout() {
   const { isAuthenticated } = useAuth()
@@ -64,6 +65,7 @@ function ProtectedApp() {
           <Route path="/users"         element={<UsersPage />} />
           <Route path="/settings"      element={<SettingsPage />} />
           <Route path="/billing"       element={<BillingPage />} />
+          <Route path="/super-admin"   element={<SuperAdminPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

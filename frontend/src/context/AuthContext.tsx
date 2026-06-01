@@ -7,6 +7,7 @@ interface User {
   lastName: string
   tenantId: string
   permissions: string[]
+  isSuperAdmin?: boolean
 }
 
 interface Tenant {

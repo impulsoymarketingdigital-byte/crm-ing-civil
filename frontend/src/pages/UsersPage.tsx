@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import {
-  Users, UserPlus, Pencil, Key, UserCheck, UserX, X, Eye, EyeOff, Loader2, CheckCircle2,
+  Users, UserPlus, Pencil, Key, UserCheck, UserX, X, Eye, EyeOff, Loader2, CheckCircle2, ShieldCheck,
 } from 'lucide-react'
 
 const inputCls =
@@ -18,23 +18,95 @@ const ROLE_COLORS: Record<string, string> = {
 const roleBadge = (role: string) =>
   `inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[role] ?? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700'}`
 
-interface Role { id: string; name: string }
+// Full permission catalogue
+const ALL_PERMISSIONS: { group: string; perms: { label: string; value: string }[] }[] = [
+  { group: 'Usuarios', perms: [
+    { label: 'Ver usuarios', value: 'user:read' },
+    { label: 'Gestionar usuarios', value: 'user:write' },
+  ]},
+  { group: 'Cuentas', perms: [
+    { label: 'Ver cuentas', value: 'account:read' },
+    { label: 'Gestionar cuentas', value: 'account:write' },
+  ]},
+  { group: 'Asientos contables', perms: [
+    { label: 'Ver asientos', value: 'journal:read' },
+    { label: 'Crear asientos', value: 'journal:write' },
+    { label: 'Contabilizar asientos', value: 'journal:post' },
+    { label: 'Anular asientos', value: 'journal:void' },
+  ]},
+  { group: 'Inventario', perms: [
+    { label: 'Ver inventario', value: 'inventory:read' },
+    { label: 'Gestionar inventario', value: 'inventory:write' },
+  ]},
+  { group: 'Clientes', perms: [
+    { label: 'Ver clientes', value: 'customer:read' },
+    { label: 'Gestionar clientes', value: 'customer:write' },
+  ]},
+  { group: 'Facturas', perms: [
+    { label: 'Ver facturas', value: 'invoice:read' },
+    { label: 'Crear facturas', value: 'invoice:write' },
+    { label: 'Emitir facturas', value: 'invoice:issue' },
+  ]},
+  { group: 'IA', perms: [
+    { label: 'Usar IA', value: 'ai:use' },
+  ]},
+  { group: 'Proyectos', perms: [
+    { label: 'Ver proyectos', value: 'project:read' },
+    { label: 'Gestionar proyectos', value: 'project:write' },
+    { label: 'Eliminar proyectos', value: 'project:delete' },
+  ]},
+  { group: 'APU', perms: [
+    { label: 'Ver APU', value: 'apu:read' },
+    { label: 'Gestionar APU', value: 'apu:write' },
+  ]},
+  { group: 'Presupuestos', perms: [
+    { label: 'Ver presupuestos', value: 'budget:read' },
+    { label: 'Gestionar presupuestos', value: 'budget:write' },
+    { label: 'Aprobar presupuestos', value: 'budget:approve' },
+  ]},
+  { group: 'Actas', perms: [
+    { label: 'Ver actas', value: 'certificate:read' },
+    { label: 'Crear actas', value: 'certificate:write' },
+    { label: 'Aprobar actas', value: 'certificate:approve' },
+    { label: 'Pagar actas', value: 'certificate:pay' },
+  ]},
+  { group: 'Liquidación', perms: [
+    { label: 'Ver liquidación', value: 'liquidation:read' },
+    { label: 'Crear liquidación', value: 'liquidation:write' },
+    { label: 'Finalizar liquidación', value: 'liquidation:finalize' },
+  ]},
+  { group: 'Nómina', perms: [
+    { label: 'Ver nómina', value: 'payroll:read' },
+    { label: 'Gestionar nómina', value: 'payroll:write' },
+    { label: 'Aprobar nómina', value: 'payroll:approve' },
+    { label: 'Pagar nómina', value: 'payroll:pay' },
+  ]},
+  { group: 'SECOP', perms: [
+    { label: 'Buscar SECOP', value: 'secop:search' },
+  ]},
+  { group: 'PDF', perms: [
+    { label: 'Generar PDFs', value: 'pdf:generate' },
+  ]},
+]
+
+interface Role { id: string; name: string; permissions?: string[] }
 interface User {
   id: string
   firstName: string
   lastName: string
   email: string
-  role?: { name: string }
+  role?: { name: string; permissions?: string[] }
   roleId?: string
   isActive: boolean
   createdAt: string
+  customPermissions?: string[]
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg">
+      <div className={`bg-gray-800 rounded-2xl shadow-2xl w-full ${wide ? 'max-w-2xl' : 'max-w-lg'}`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
           <h2 className="text-lg font-semibold text-white">{title}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
@@ -163,7 +235,14 @@ export default function UsersPage() {
                       <div className="w-8 h-8 rounded-full bg-indigo-700 flex items-center justify-center text-white text-xs font-semibold">
                         {u.firstName?.[0]}{u.lastName?.[0]}
                       </div>
-                      <span className="text-white text-sm font-medium">{u.firstName} {u.lastName}</span>
+                      <div>
+                        <span className="text-white text-sm font-medium">{u.firstName} {u.lastName}</span>
+                        {(u.customPermissions?.length ?? 0) > 0 && (
+                          <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-indigo-900/50 text-indigo-300 border border-indigo-700">
+                            <ShieldCheck size={10} /> +{u.customPermissions!.length}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-gray-300 text-sm">{u.email}</td>
@@ -325,65 +404,218 @@ function InviteModal({ roles, tenantId, onClose, onSuccess }: {
   )
 }
 
+// ---- EditUserModal with tabs ----
+
 function EditUserModal({ user, roles, onClose, onSuccess }: {
   user: User; roles: Role[]; onClose: () => void; onSuccess: () => void
 }) {
+  const [activeTab, setActiveTab] = useState<'datos' | 'permisos'>('datos')
+
+  // Tab 1 state
   const [form, setForm] = useState({
     firstName: user.firstName,
     lastName: user.lastName,
     roleId: user.roleId ?? '',
   })
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [formLoading, setFormLoading] = useState(false)
 
-  const submit = async (e: React.FormEvent) => {
+  // Tab 2 state
+  const [rolePerms, setRolePerms] = useState<string[]>([])
+  const [customPerms, setCustomPerms] = useState<string[]>(user.customPermissions ?? [])
+  const [permsLoading, setPermsLoading] = useState(false)
+  const [permsError, setPermsError] = useState('')
+  const [permsSaving, setPermsSaving] = useState(false)
+
+  // Load role permissions when tab switches or roleId changes
+  useEffect(() => {
+    if (activeTab !== 'permisos') return
+    const selectedRole = roles.find(r => r.id === form.roleId)
+    if (selectedRole?.permissions) {
+      setRolePerms(selectedRole.permissions)
+      return
+    }
+    if (!form.roleId) { setRolePerms([]); return }
+    setPermsLoading(true)
+    api.get(`/roles/${form.roleId}`)
+      .then(res => setRolePerms(res.data.permissions ?? []))
+      .catch(() => setRolePerms([]))
+      .finally(() => setPermsLoading(false))
+  }, [activeTab, form.roleId, roles])
+
+  const submitDatos = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setFormLoading(true)
     try {
       await api.put(`/users/${user.id}`, form)
       onSuccess()
     } catch (err: any) {
-      setError(err.response?.data?.message ?? 'Error al actualizar usuario')
+      setFormError(err.response?.data?.message ?? 'Error al actualizar usuario')
     } finally {
-      setLoading(false)
+      setFormLoading(false)
     }
   }
 
+  const submitPermisos = async () => {
+    setPermsSaving(true)
+    setPermsError('')
+    try {
+      await api.put(`/users/${user.id}/permissions`, { customPermissions: customPerms })
+      onSuccess()
+    } catch (err: any) {
+      setPermsError(err.response?.data?.message ?? 'Error al guardar permisos')
+    } finally {
+      setPermsSaving(false)
+    }
+  }
+
+  const toggleCustomPerm = (perm: string) => {
+    if (rolePerms.includes(perm)) return // role perms are locked
+    setCustomPerms(prev =>
+      prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
+    )
+  }
+
+  const effectivePerms = Array.from(new Set([...rolePerms, ...customPerms]))
+
   return (
-    <Modal title="Editar Usuario" onClose={onClose}>
-      <form onSubmit={submit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Nombre *</label>
-            <input className={inputCls} value={form.firstName}
-              onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} required />
+    <Modal title={`Editar Usuario — ${user.firstName} ${user.lastName}`} onClose={onClose} wide>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-700 mb-5 -mt-1">
+        {(['datos', 'permisos'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab
+                ? 'border-indigo-500 text-indigo-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            {tab === 'datos' ? 'Datos' : 'Permisos extra'}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab 1: Datos */}
+      {activeTab === 'datos' && (
+        <form onSubmit={submitDatos} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1">Nombre *</label>
+              <input className={inputCls} value={form.firstName}
+                onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1">Apellido *</label>
+              <input className={inputCls} value={form.lastName}
+                onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} required />
+            </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Apellido *</label>
-            <input className={inputCls} value={form.lastName}
-              onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} required />
+            <label className="block text-xs font-medium text-gray-400 mb-1">Rol</label>
+            <select className={inputCls} value={form.roleId}
+              onChange={e => setForm(p => ({ ...p, roleId: e.target.value }))}>
+              <option value="">Sin rol</option>
+              {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
           </div>
+          {formError && <p className="text-red-400 text-xs">{formError}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg py-2.5 transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" disabled={formLoading}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg py-2.5 transition-colors flex items-center justify-center gap-2">
+              {formLoading ? <><Loader2 size={16} className="animate-spin" /> Guardando...</> : 'Guardar datos'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Tab 2: Permisos extra */}
+      {activeTab === 'permisos' && (
+        <div className="space-y-4">
+          {permsLoading ? (
+            <div className="flex items-center justify-center py-8 text-gray-400 gap-2">
+              <Loader2 size={18} className="animate-spin" /> Cargando permisos del rol...
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-gray-400">
+                Los permisos del rol aparecen marcados y bloqueados <span className="text-gray-500">(del rol)</span>. Puedes añadir permisos extra individualmente.
+              </p>
+
+              <div className="max-h-72 overflow-y-auto space-y-4 pr-1">
+                {ALL_PERMISSIONS.map(group => (
+                  <div key={group.group}>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{group.group}</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      {group.perms.map(p => {
+                        const fromRole = rolePerms.includes(p.value)
+                        const isCustom = customPerms.includes(p.value)
+                        const checked = fromRole || isCustom
+                        return (
+                          <label
+                            key={p.value}
+                            className={`flex items-center gap-2 cursor-pointer ${fromRole ? 'opacity-60' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={fromRole}
+                              onChange={() => toggleCustomPerm(p.value)}
+                              className="w-3.5 h-3.5 rounded border-gray-500 accent-indigo-500 disabled:cursor-not-allowed"
+                            />
+                            <span className="text-sm text-gray-300">{p.label}</span>
+                            {fromRole && (
+                              <span className="text-xs text-gray-500 italic">(rol)</span>
+                            )}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Effective permissions summary */}
+              <div className="bg-gray-900/60 rounded-lg p-3 border border-gray-700">
+                <p className="text-xs font-semibold text-gray-400 mb-2">
+                  Permisos efectivos ({effectivePerms.length}):
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {effectivePerms.length === 0 ? (
+                    <span className="text-xs text-gray-500 italic">Ninguno</span>
+                  ) : effectivePerms.map(p => (
+                    <span key={p} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono ${
+                      rolePerms.includes(p)
+                        ? 'bg-gray-700 text-gray-400'
+                        : 'bg-indigo-900/60 text-indigo-300 border border-indigo-700'
+                    }`}>
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {permsError && <p className="text-red-400 text-xs">{permsError}</p>}
+
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={onClose}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg py-2.5 transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={submitPermisos} disabled={permsSaving}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg py-2.5 transition-colors flex items-center justify-center gap-2">
+                  {permsSaving ? <><Loader2 size={16} className="animate-spin" /> Guardando...</> : 'Guardar permisos'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Rol</label>
-          <select className={inputCls} value={form.roleId}
-            onChange={e => setForm(p => ({ ...p, roleId: e.target.value }))}>
-            <option value="">Sin rol</option>
-            {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        </div>
-        {error && <p className="text-red-400 text-xs">{error}</p>}
-        <div className="flex gap-3 pt-2">
-          <button type="button" onClick={onClose}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg py-2.5 transition-colors">
-            Cancelar
-          </button>
-          <button type="submit" disabled={loading}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg py-2.5 transition-colors flex items-center justify-center gap-2">
-            {loading ? <><Loader2 size={16} className="animate-spin" /> Guardando...</> : 'Guardar'}
-          </button>
-        </div>
-      </form>
+      )}
     </Modal>
   )
 }

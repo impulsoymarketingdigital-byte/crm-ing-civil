@@ -44,4 +44,10 @@ export class UsersService {
       throw new BadRequestException('La nueva contraseña debe tener al menos 8 caracteres');
     return this.repo.resetPassword(id, newPassword);
   }
+
+  /** Set per-user custom permissions (merged with role on next login) */
+  async updatePermissions(id: string, tenantId: string, customPermissions: string[]) {
+    await this.findOne(id, tenantId);
+    return this.repo.update(id, { customPermissions } as any);
+  }
 }

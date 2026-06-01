@@ -51,4 +51,14 @@ export class UsersController {
   ) {
     return this.service.resetPassword(id, tenantId, body.newPassword);
   }
+
+  /** PUT /users/:id/permissions — update custom permissions for a user */
+  @Put(':id/permissions')
+  updatePermissions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @TenantId() tenantId: string,
+    @Body() body: { customPermissions: string[] },
+  ) {
+    return this.service.updatePermissions(id, tenantId, body.customPermissions);
+  }
 }
