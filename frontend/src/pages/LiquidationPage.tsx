@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
-import { Loader2, Plus, X, CheckCircle, DollarSign } from 'lucide-react'
+import { Loader2, Plus, CheckCircle } from 'lucide-react'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n)

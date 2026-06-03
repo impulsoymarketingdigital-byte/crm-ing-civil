@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { Loader2, Plus, FolderOpen, X } from 'lucide-react'
 

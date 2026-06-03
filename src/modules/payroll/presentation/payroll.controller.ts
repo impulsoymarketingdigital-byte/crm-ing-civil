@@ -1,7 +1,8 @@
 import {
   Body, Controller, Get, Param, ParseUUIDPipe,
-  Patch, Post, Query, UseGuards,
+  Patch, Post, Query, UseGuards, Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { TenantId } from '../../../common/decorators/tenant.decorator';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
@@ -31,6 +32,20 @@ export class PayrollController {
   @Patch('employees/:id/deactivate') @RequirePermissions(Permission.PAYROLL_WRITE)
   deactivate(@Param('id', ParseUUIDPipe) id: string, @TenantId() tenantId: string) {
     return this.svc.deactivateEmployee(id, tenantId);
+  }
+
+  @Get('bancolombia') @RequirePermissions(Permission.PAYROLL_READ)
+  async downloadBancolombiaFlatFile(
+    @Query('year') year: string,
+    @Query('month') month: string,
+    @Query('fortnight') fortnight: string,
+    @TenantId() tenantId: string,
+    @Res() res: Response,
+  ) {
+    const fileContent = await this.svc.generateBancolombiaFlatFile(tenantId, +year, +month, +fortnight);
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename=bancolombia_nomina_${year}_${month}_f${fortnight}.txt`);
+    return res.send(fileContent);
   }
 
   @Get('periods') @RequirePermissions(Permission.PAYROLL_READ)

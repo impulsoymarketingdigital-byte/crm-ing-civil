@@ -26,6 +26,7 @@ import BillingPage from './pages/BillingPage'
 import SuperAdminPage from './pages/SuperAdminPage'
 import TrialBanner from './components/TrialBanner'
 import UpgradePage from './pages/UpgradePage'
+import ReportsPage from './pages/ReportsPage'
 
 function Layout() {
   const { isAuthenticated } = useAuth()
@@ -52,6 +53,7 @@ function ProtectedApp() {
         <Route element={<Layout />}>
           <Route path="/"              element={<DashboardPage />} />
           <Route path="/invoices"      element={<InvoicesPage />} />
+          <Route path="/reports"       element={<ReportsPage />} />
           <Route path="/inventory"     element={<InventoryPage />} />
           <Route path="/accounts"      element={<AccountsPage />} />
           <Route path="/trial-balance" element={<TrialBalancePage />} />

@@ -20,4 +20,7 @@ export class CreateEmployeeDto {
   @IsOptional() @IsString() compensationBox?: string;
   @IsDateString() startDate: string;
   @IsOptional() @IsDateString() endDate?: string;
+  @IsOptional() @IsString() bankAccount?: string;
+  @IsOptional() @IsString() bankAccountType?: string;
+  @IsOptional() @IsString() bankName?: string;
 }

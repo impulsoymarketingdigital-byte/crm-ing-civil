@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { CreateEmployeeDto } from '../domain/dto/create-employee.dto';
 import { CreatePayrollPeriodDto } from '../domain/dto/create-payroll-period.dto';
@@ -57,6 +57,9 @@ export class PayrollService {
         eps: dto.eps,
         pensionFund: dto.pensionFund,
         compensationBox: dto.compensationBox,
+        bankAccount: dto.bankAccount,
+        bankAccountType: dto.bankAccountType ?? 'Savings',
+        bankName: dto.bankName ?? 'Bancolombia',
         startDate: new Date(dto.startDate),
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
       },
@@ -233,5 +236,82 @@ export class PayrollService {
       { totalNetPay: 0, totalEmployerContrib: 0, totalPrestaciones: 0, totalLaborCost: 0 },
     );
     return { year, month, employees: periods.length, ...totals, detail: periods };
+  }
+
+  async generateBancolombiaFlatFile(tenantId: string, year: number, month: number, fortnight: number) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Empresa no encontrada');
+
+    const periods = await this.prisma.payrollPeriod.findMany({
+      where: { tenantId, year, month, fortnight },
+      include: { employee: true },
+    });
+
+    if (periods.length === 0) {
+      throw new NotFoundException('No se encontraron registros de nómina para este período');
+    }
+
+    // Helper functions for fixed width formatting
+    const cleanNum = (val: string) => val ? val.replace(/\D/g, '') : '';
+    const padZero = (val: string | number, length: number) => String(val).padStart(length, '0');
+    const padSpace = (val: string, length: number) => String(val).slice(0, length).padEnd(length, ' ');
+
+    const now = new Date();
+    const transmissionDate = [
+      padZero(now.getDate(), 2),
+      padZero(now.getMonth() + 1, 2),
+      String(now.getFullYear()).substring(2),
+    ].join('');
+
+    let totalCents = 0;
+    const detailLines: string[] = [];
+
+    for (const p of periods) {
+      const netPay = Number(p.netPay);
+      if (netPay <= 0) continue;
+
+      const cents = Math.round(netPay * 100);
+      totalCents += cents;
+
+      const docClean = cleanNum(p.employee.document);
+      const docFormatted = padZero(docClean, 15);
+      const nameFormatted = padSpace(`${p.employee.firstName} ${p.employee.lastName}`.trim().toUpperCase(), 30);
+      
+      const empAccountClean = cleanNum(p.employee.bankAccount ?? '');
+      const accountFormatted = padZero(empAccountClean || docClean, 17); // fallback to document
+      
+      const accountTypeFormatted = p.employee.bankAccountType === 'CORRIENTE' ? 'D' : 'S';
+      const centsFormatted = padZero(cents, 17);
+      
+      const concept = padSpace(`NOMINA ${year}-${month} F${fortnight}`.toUpperCase(), 20);
+      const bankCode = '507'; // Bancolombia
+      const fillSpaces = ' '.repeat(160); // 264 - 104 = 160
+
+      const detailLine = `6${docFormatted}${nameFormatted}${accountFormatted}${accountTypeFormatted}${centsFormatted}${concept}${bankCode}${fillSpaces}`;
+      detailLines.push(detailLine);
+    }
+
+    if (detailLines.length === 0) {
+      throw new BadRequestException('No hay pagos netos mayores a cero para este período');
+    }
+
+    // Header Line
+    const tenantTaxClean = cleanNum(tenant.taxId ?? '999999999');
+    const tenantTaxFormatted = padZero(tenantTaxClean, 15);
+    const tenantNameFormatted = padSpace(tenant.name.trim().toUpperCase(), 16);
+    const classOfPayment = '225'; // Payroll
+    const paymentDesc = padSpace(`PAGO NOMINA F${fortnight}`, 20);
+    const sequenceNumber = '01';
+    const recordCountFormatted = padZero(detailLines.length, 7);
+    const totalCentsFormatted = padZero(totalCents, 17);
+    
+    const tenantAccountClean = cleanNum(tenant.bankAccount ?? '12345678901');
+    const tenantAccountFormatted = padZero(tenantAccountClean, 11);
+    const tenantAccountTypeFormatted = tenant.bankAccountType === 'CORRIENTE' ? 'D' : 'S';
+    const headerFillSpaces = ' '.repeat(165); // 264 - 99 = 165
+
+    const headerLine = `1${tenantTaxFormatted}${tenantNameFormatted}${classOfPayment}${paymentDesc}${transmissionDate}${sequenceNumber}${recordCountFormatted}${totalCentsFormatted}${tenantAccountFormatted}${tenantAccountTypeFormatted}${headerFillSpaces}`;
+
+    return [headerLine, ...detailLines].join('\r\n');
   }
 }

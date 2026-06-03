@@ -21,6 +21,11 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Datos fiscales y bancarios
+  taxId           String?
+  bankAccount     String?
+  bankAccountType String?  @default("Savings")
+
   /// ── Trial / Subscription ────────────────────────────────────────────
   /// Estado de suscripción: trial | active | expired | cancelled | suspended
   subscriptionStatus   String   @default("trial")
@@ -560,6 +565,11 @@ model Employee {
   eps              String? // Nombre EPS
   pensionFund      String? // Fondo de pensiones
   compensationBox  String? // Caja de compensación
+
+  /// Información bancaria
+  bankAccount      String?
+  bankAccountType  String?      @default("Savings")
+  bankName         String?      @default("Bancolombia")
 
   startDate DateTime
   endDate   DateTime?

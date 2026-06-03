@@ -18,7 +18,7 @@ import type { ProcessInvoiceOcrDto } from '../domain/dto/process-invoice-ocr.dto
 // ── Model ────────────────────────────────────────────────────────────────────
 // User requested claude-3-5-sonnet; override via AI_MODEL env var.
 // For higher accuracy on complex layouts, switch to claude-opus-4-7.
-const DEFAULT_MODEL = 'claude-3-5-sonnet-20241022';
+const DEFAULT_MODEL = 'claude-3-5-sonnet-20240620';
 
 // ── System prompt (STABLE — no dynamic content, eligible for caching) ────────
 // Render order: tools → system → messages.
@@ -56,13 +56,14 @@ export class AiAutomationService {
   private readonly logger = new Logger(AiAutomationService.name);
   private readonly anthropic: Anthropic;
   private readonly model: string;
+  private readonly apiKey: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    const apiKey = this.config.getOrThrow<string>('ANTHROPIC_API_KEY');
-    this.anthropic = new Anthropic({ apiKey });
+    this.apiKey = this.config.getOrThrow<string>('ANTHROPIC_API_KEY');
+    this.anthropic = new Anthropic({ apiKey: this.apiKey });
     this.model = this.config.get<string>('AI_MODEL', DEFAULT_MODEL);
   }
 
@@ -86,6 +87,12 @@ export class AiAutomationService {
     tenantId: string,
     dto: ProcessInvoiceOcrDto,
   ): Promise<ProcessOcrResult> {
+    if (!this.apiKey || this.apiKey === 'sk-ant-...' || !this.apiKey.startsWith('sk-ant-')) {
+      throw new UnprocessableEntityException(
+        'La clave de API de Anthropic (ANTHROPIC_API_KEY) no está configurada o es el marcador de posición por defecto ("sk-ant-...") en el archivo .env. Por favor configure una clave real en su archivo .env.',
+      );
+    }
+
     // ── Step 1: AI extraction ─────────────────────────────────────────────
     const { extractedData, usage } = await this.extractInvoiceData(dto.ocrText);
 

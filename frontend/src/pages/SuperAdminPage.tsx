@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import {
-  ShieldAlert, Building2, Users, Zap, Loader2, CheckCircle2, X,
+  ShieldAlert, Building2, Zap, Loader2, CheckCircle2, X,
   ToggleLeft, ToggleRight, Search, ChevronDown,
 } from 'lucide-react'
 

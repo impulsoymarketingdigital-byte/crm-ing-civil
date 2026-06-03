@@ -5,7 +5,19 @@ import { Loader2, Plus, X, Users, Calendar, CheckCircle, DollarSign } from 'luci
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n)
 
-const EMPTY_EMP = { code: '', firstName: '', lastName: '', position: '', baseSalary: '', riskLevel: 'LOW' }
+const EMPTY_EMP = {
+  code: '',
+  firstName: '',
+  lastName: '',
+  document: '',
+  position: '',
+  baseSalary: '',
+  riskLevel: 'I',
+  startDate: new Date().toISOString().split('T')[0],
+  bankAccount: '',
+  bankAccountType: 'Savings',
+  bankName: 'Bancolombia',
+}
 
 export default function PayrollPage() {
   const [tab, setTab] = useState<'employees' | 'periods'>('employees')
@@ -20,7 +32,6 @@ export default function PayrollPage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [fortnight, setFortnight] = useState<1 | 2>(1)
   const [periods, setPeriods] = useState<any[]>([])
-  const [periodDetail, setPeriodDetail] = useState<any>(null)
   const [loadingPeriods, setLoadingPeriods] = useState(false)
   const [generatingPeriod, setGeneratingPeriod] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -33,12 +44,8 @@ export default function PayrollPage() {
     api.get('/payroll/periods').then(r => setPeriods(r.data)).finally(() => setLoadingPeriods(false))
   }
 
-  const loadSummary = () => {
-    api.get(`/payroll/summary/${year}/${month}`).then(r => setPeriodDetail(r.data)).catch(() => setPeriodDetail(null))
-  }
-
   useEffect(() => { loadEmployees() }, [])
-  useEffect(() => { if (tab === 'periods') { loadPeriods(); loadSummary() } }, [tab, year, month])
+  useEffect(() => { if (tab === 'periods') { loadPeriods() } }, [tab, year, month])
 
   const handleEmpChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setEmpForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -61,7 +68,6 @@ export default function PayrollPage() {
     try {
       await api.post('/payroll/periods', { year, month, fortnight })
       loadPeriods()
-      loadSummary()
     } catch (err: any) {
       alert(err.response?.data?.message ?? 'Error al generar período')
     } finally { setGeneratingPeriod(false) }
@@ -75,6 +81,26 @@ export default function PayrollPage() {
     } catch (err: any) {
       alert(err.response?.data?.message ?? 'Error')
     } finally { setActionLoading(null) }
+  }
+
+  const downloadBancolombiaFile = async () => {
+    try {
+      const response = await api.get(`/payroll/bancolombia`, {
+        params: { year, month, fortnight },
+        responseType: 'blob',
+      })
+      const blob = new Blob([response.data], { type: 'text/plain;charset=utf-8' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `bancolombia_nomina_${year}_${month}_f${fortnight}.txt`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      alert('Error al descargar el archivo plano. Asegúrese de que existan periodos creados y aprobados.')
+    }
   }
 
   const totals = periods.reduce((acc, p) => ({
@@ -139,8 +165,8 @@ export default function PayrollPage() {
                     <td className="px-4 py-3 text-gray-200">{fmt(Number(emp.baseSalary))}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                        emp.riskLevel === 'HIGH' ? 'bg-red-900/40 text-red-400' :
-                        emp.riskLevel === 'MEDIUM' ? 'bg-yellow-900/40 text-yellow-400' :
+                        emp.riskLevel === 'V' || emp.riskLevel === 'IV' ? 'bg-red-900/40 text-red-400' :
+                        emp.riskLevel === 'III' || emp.riskLevel === 'II' ? 'bg-yellow-900/40 text-yellow-400' :
                         'bg-emerald-900/40 text-emerald-400'
                       }`}>{emp.riskLevel}</span>
                     </td>
@@ -189,6 +215,13 @@ export default function PayrollPage() {
               className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
               {generatingPeriod ? <Loader2 size={14} className="animate-spin" /> : <Plus size={15} />} Generar Período
+            </button>
+            <button
+              onClick={downloadBancolombiaFile}
+              disabled={periods.length === 0}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              Descargar Plano Bancolombia
             </button>
           </div>
 
@@ -269,41 +302,103 @@ export default function PayrollPage() {
       {/* New Employee Modal */}
       {showEmpModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-2xl border border-gray-700 w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+          <div className="bg-gray-900 rounded-2xl border border-gray-700 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 sticky top-0 bg-gray-900 z-10">
               <h2 className="text-white font-semibold">Nuevo Empleado</h2>
               <button onClick={() => setShowEmpModal(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
             </div>
             <form onSubmit={submitEmployee} className="px-6 py-5 space-y-4">
-              {[
-                { name: 'code', label: 'Código', placeholder: 'EMP-001' },
-                { name: 'firstName', label: 'Nombre', placeholder: 'Juan' },
-                { name: 'lastName', label: 'Apellido', placeholder: 'Pérez' },
-                { name: 'position', label: 'Cargo', placeholder: 'Ingeniero Civil' },
-              ].map(f => (
-                <div key={f.name}>
-                  <label className="block text-xs text-gray-400 mb-1">{f.label}</label>
-                  <input name={f.name} value={(empForm as any)[f.name]} onChange={handleEmpChange}
-                    placeholder={f.placeholder} required
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Código</label>
+                  <input name="code" value={empForm.code} onChange={handleEmpChange}
+                    placeholder="EMP-001" required
                     className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
                 </div>
-              ))}
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Salario Base (COP)</label>
-                <input name="baseSalary" type="number" value={empForm.baseSalary} onChange={handleEmpChange}
-                  placeholder="2000000" required
-                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Cédula / Documento</label>
+                  <input name="document" value={empForm.document} onChange={handleEmpChange}
+                    placeholder="12345678" required
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Nivel de Riesgo</label>
-                <select name="riskLevel" value={empForm.riskLevel} onChange={handleEmpChange}
-                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                  <option value="LOW">Bajo (I)</option>
-                  <option value="MEDIUM">Medio (II-III)</option>
-                  <option value="HIGH">Alto (IV-V)</option>
-                </select>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Nombre</label>
+                  <input name="firstName" value={empForm.firstName} onChange={handleEmpChange}
+                    placeholder="Juan" required
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Apellido</label>
+                  <input name="lastName" value={empForm.lastName} onChange={handleEmpChange}
+                    placeholder="Pérez" required
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+                </div>
               </div>
-              <div className="flex gap-3 pt-2">
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Cargo</label>
+                  <input name="position" value={empForm.position} onChange={handleEmpChange}
+                    placeholder="Ingeniero Civil" required
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Salario Base (COP)</label>
+                  <input name="baseSalary" type="number" value={empForm.baseSalary} onChange={handleEmpChange}
+                    placeholder="2000000" required
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Fecha de Contratación</label>
+                  <input name="startDate" type="date" value={empForm.startDate} onChange={handleEmpChange} required
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Nivel de Riesgo (ARL)</label>
+                  <select name="riskLevel" value={empForm.riskLevel} onChange={handleEmpChange}
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                    <option value="I">Bajo (I - 0.522%)</option>
+                    <option value="II">Medio (II - 1.044%)</option>
+                    <option value="III">Medio-Alto (III - 2.436%)</option>
+                    <option value="IV">Alto (IV - 4.350%)</option>
+                    <option value="V">Máximo (V - 6.960%)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-700 pt-3">
+                <p className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider">Detalles de Transferencia Bancolombia</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <label className="block text-xs text-gray-400 mb-1">Nº Cuenta Bancaria</label>
+                    <input name="bankAccount" value={empForm.bankAccount} onChange={handleEmpChange}
+                      placeholder="12345678901"
+                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Tipo Cuenta</label>
+                    <select name="bankAccountType" value={empForm.bankAccountType} onChange={handleEmpChange}
+                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                      <option value="Savings">Ahorros</option>
+                      <option value="Checking">Corriente</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="block text-xs text-gray-400 mb-1">Nombre del Banco</label>
+                  <input name="bankName" value={empForm.bankName} onChange={handleEmpChange}
+                    placeholder="Bancolombia"
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-3 sticky bottom-0 bg-gray-900 pb-1 border-t border-gray-800 mt-2">
                 <button type="button" onClick={() => setShowEmpModal(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium py-2 rounded-lg transition-colors">Cancelar</button>
                 <button type="submit" disabled={savingEmp} className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
                   {savingEmp && <Loader2 size={14} className="animate-spin" />} Guardar

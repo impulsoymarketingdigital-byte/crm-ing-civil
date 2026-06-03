@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 
 interface User {
   id: string
@@ -15,6 +15,9 @@ interface Tenant {
   name: string
   slug: string
   plan: string
+  taxId?: string
+  bankAccount?: string
+  bankAccountType?: string
 }
 
 interface AuthContextType {
@@ -23,6 +26,7 @@ interface AuthContextType {
   token: string | null
   login: (token: string, user: User, tenant: Tenant) => void
   logout: () => void
+  updateTenant: (tenant: Tenant) => void
   isAuthenticated: boolean
 }
 
@@ -59,8 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTenant(null)
   }
 
+  const updateTenant = (ten: Tenant) => {
+    localStorage.setItem('tenant', JSON.stringify(ten))
+    setTenant(ten)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, tenant, token, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, tenant, token, login, logout, updateTenant, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   )

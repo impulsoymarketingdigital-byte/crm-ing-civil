@@ -66,7 +66,15 @@ export class AuthService {
         isSuperAdmin: user.isSuperAdmin,
         permissions,
       },
-      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug, plan: tenant.plan },
+      tenant: {
+        id: tenant.id,
+        name: tenant.name,
+        slug: tenant.slug,
+        plan: tenant.plan,
+        taxId: tenant.taxId,
+        bankAccount: tenant.bankAccount,
+        bankAccountType: tenant.bankAccountType,
+      },
     };
   }
 
@@ -108,8 +116,15 @@ export class AuthService {
       user: { id: result.user.id, email: result.user.email,
               firstName: result.user.firstName, lastName: result.user.lastName,
               tenantId: result.tenant.id, permissions: result.permissions, isSuperAdmin: false },
-      tenant: { id: result.tenant.id, name: result.tenant.name,
-                slug: result.tenant.slug, plan: result.tenant.plan },
+      tenant: {
+        id: result.tenant.id,
+        name: result.tenant.name,
+        slug: result.tenant.slug,
+        plan: result.tenant.plan,
+        taxId: result.tenant.taxId,
+        bankAccount: result.tenant.bankAccount,
+        bankAccountType: result.tenant.bankAccountType,
+      },
     };
   }
 
@@ -141,6 +156,21 @@ export class AuthService {
     if (newPassword.length < 8) throw new BadRequestException('Mínimo 8 caracteres');
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(newPassword, 12) } });
     return { message: 'Contraseña actualizada exitosamente' };
+  }
+
+  async updateTenant(tenantId: string, body: { name: string; taxId?: string; bankAccount?: string; bankAccountType?: string }) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Empresa no encontrada');
+
+    return this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        name: body.name,
+        taxId: body.taxId,
+        bankAccount: body.bankAccount,
+        bankAccountType: body.bankAccountType,
+      },
+    });
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────

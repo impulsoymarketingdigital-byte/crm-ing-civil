@@ -70,6 +70,9 @@ export enum Permission {
 
   // PDF generation
   PDF_GENERATE = 'pdf:generate',
+
+  // Reports
+  REPORTS_READ = 'reports:read',
 }
 
 // ── Predefined role sets ──────────────────────────────────────────────────────
@@ -102,6 +105,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     Permission.PAYROLL_APPROVE,
     Permission.PAYROLL_PAY,
     Permission.PDF_GENERATE,
+    Permission.REPORTS_READ,
   ],
 
   // Director de obra / Residente
@@ -174,5 +178,6 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     Permission.LIQUIDATION_READ,
     Permission.PAYROLL_READ,
     Permission.SECOP_SEARCH,
+    Permission.REPORTS_READ,
   ],
 };

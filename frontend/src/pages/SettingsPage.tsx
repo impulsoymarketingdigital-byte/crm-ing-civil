@@ -165,8 +165,16 @@ function ProfileTab() {
 
 // ---- Company Tab ----
 function CompanyTab() {
-  const { tenant } = useAuth()
+  const { tenant, updateTenant } = useAuth()
+  const [form, setForm] = useState({
+    name: tenant?.name ?? '',
+    taxId: tenant?.taxId ?? '',
+    bankAccount: tenant?.bankAccount ?? '',
+    bankAccountType: tenant?.bankAccountType ?? 'Savings',
+  })
   const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
   const copyId = () => {
     if (!tenant?.id) return
@@ -175,15 +183,30 @@ function CompanyTab() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const fields = [
-    { label: 'Nombre de la empresa', value: tenant?.name },
-    { label: 'Slug', value: tenant?.slug },
-    { label: 'Plan', value: tenant?.plan?.toUpperCase() },
-  ]
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setMsg(null)
+    try {
+      const { data } = await api.put('/auth/tenant', form)
+      updateTenant({
+        ...tenant!,
+        name: data.name,
+        taxId: data.taxId,
+        bankAccount: data.bankAccount,
+        bankAccountType: data.bankAccountType,
+      })
+      setMsg({ type: 'ok', text: 'Datos de la empresa actualizados correctamente' })
+    } catch (err: any) {
+      setMsg({ type: 'err', text: err.response?.data?.message ?? 'Error al guardar' })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-6 max-w-lg">
-      <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
+      <form onSubmit={save} className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-indigo-700 flex items-center justify-center">
             <Building2 size={20} className="text-white" />
@@ -194,25 +217,57 @@ function CompanyTab() {
           </div>
         </div>
 
-        {fields.map(f => (
-          <div key={f.label}>
-            <label className="block text-xs font-medium text-gray-400 mb-1">{f.label}</label>
-            <input className={readonlyCls} value={f.value ?? '—'} readOnly />
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Nombre de la empresa</label>
+          <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">Slug (Identificador)</label>
+            <input className={readonlyCls} value={tenant?.slug ?? ''} readOnly />
           </div>
-        ))}
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">NIT de la Empresa</label>
+            <input className={inputCls} placeholder="900.123.456-7" value={form.taxId} onChange={e => setForm(f => ({ ...f, taxId: e.target.value }))} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">Cuenta Bancaria de Débito</label>
+            <input className={inputCls} placeholder="Nº de cuenta para transferencias" value={form.bankAccount} onChange={e => setForm(f => ({ ...f, bankAccount: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">Tipo de Cuenta</label>
+            <select className={inputCls} value={form.bankAccountType} onChange={e => setForm(f => ({ ...f, bankAccountType: e.target.value }))}>
+              <option value="Savings">Ahorros</option>
+              <option value="Checking">Corriente</option>
+            </select>
+          </div>
+        </div>
 
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">ID del Tenant</label>
           <div className="flex gap-2">
             <input className={readonlyCls + ' flex-1 font-mono text-xs'} value={tenant?.id ?? ''} readOnly />
-            <button onClick={copyId}
+            <button type="button" onClick={copyId}
               className="px-3 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-gray-300 transition-colors"
               title="Copiar ID">
               {copied ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
             </button>
           </div>
         </div>
-      </div>
+
+        {msg && (
+          <p className={`text-xs ${msg.type === 'ok' ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>
+        )}
+
+        <button type="submit" disabled={saving}
+          className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+          {saving ? <><Loader2 size={15} className="animate-spin" /> Guardando...</> : 'Guardar Cambios'}
+        </button>
+      </form>
 
       <div className="bg-indigo-900/30 border border-indigo-700/50 rounded-xl p-5">
         <div className="flex items-start gap-3">

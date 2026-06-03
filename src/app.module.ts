@@ -28,6 +28,7 @@ import { BillingModule } from './modules/billing/billing.module';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TrialGuard } from './common/guards/trial.guard';
@@ -62,6 +63,7 @@ import { TrialGuard } from './common/guards/trial.guard';
     BillingModule,
     SuperAdminModule,
     SubscriptionModule,
+    ReportsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

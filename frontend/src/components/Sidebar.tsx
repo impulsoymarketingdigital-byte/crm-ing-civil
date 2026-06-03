@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 
 const generalNav = [
   { to: '/',              icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/reports',       icon: BarChart3,        label: 'Reportes' },
   { to: '/projects',      icon: FolderOpen,       label: 'Proyectos' },
   { to: '/inventory',     icon: Package,          label: 'Inventario' },
   { to: '/payroll',       icon: Users,            label: 'Nómina' },

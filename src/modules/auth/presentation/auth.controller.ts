@@ -64,4 +64,14 @@ export class AuthController {
   ) {
     return this.authService.changePassword(userId, tenantId, body.currentPassword, body.newPassword);
   }
+
+  /** PUT /api/v1/auth/tenant — update company profile */
+  @UseGuards(JwtAuthGuard)
+  @Put('tenant')
+  updateTenant(
+    @TenantId() tenantId: string,
+    @Body() body: { name: string; taxId?: string; bankAccount?: string; bankAccountType?: string },
+  ) {
+    return this.authService.updateTenant(tenantId, body);
+  }
 }

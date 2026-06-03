@@ -5,7 +5,6 @@ import { Loader2, ArrowDownCircle, ArrowUpCircle, TrendingUp, Plus, Package, His
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n)
 
-const TYPES = ['PRODUCT', 'SERVICE', 'RAW_MATERIAL', 'FINISHED_GOOD']
 const UNITS = ['UN', 'KG', 'M', 'M2', 'M3', 'LT', 'GL', 'HR', 'JOR', 'TON', 'ML', 'CM', 'BOL', 'CAJ']
 
 const typeBadge = (t: string) => {
