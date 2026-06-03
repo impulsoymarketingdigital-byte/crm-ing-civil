@@ -7,8 +7,7 @@ import * as dotenv from 'dotenv';
 // Load .env so DATABASE_URL is available at config-evaluation time
 dotenv.config();
 
-const connectionString = process.env['DATABASE_URL'];
-if (!connectionString) throw new Error('DATABASE_URL env var is required');
+const connectionString = process.env['DATABASE_URL'] || 'postgresql://postgres:password@localhost:5432/netsuite_clone';
 
 export default defineConfig({
   schema: path.join('prisma', 'schema.prisma'),
