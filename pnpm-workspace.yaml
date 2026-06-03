@@ -5,3 +5,4 @@ allowBuilds:
   '@prisma/engines': true
   'prisma': true
   '@scarf/scarf': true
+  'unrs-resolver': true
