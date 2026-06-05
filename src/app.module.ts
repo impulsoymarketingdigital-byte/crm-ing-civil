@@ -27,6 +27,7 @@ import { TaxesModule } from './modules/taxes/taxes.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
+import { SetupModule } from './modules/setup/setup.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -63,6 +64,7 @@ import { TrialGuard } from './common/guards/trial.guard';
     BillingModule,
     SuperAdminModule,
     SubscriptionModule,
+    SetupModule,
     ReportsModule,
   ],
   providers: [
