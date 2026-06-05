@@ -18,7 +18,7 @@ import type { ProcessInvoiceOcrDto } from '../domain/dto/process-invoice-ocr.dto
 // ── Model ────────────────────────────────────────────────────────────────────
 // User requested claude-3-5-sonnet; override via AI_MODEL env var.
 // For higher accuracy on complex layouts, switch to claude-opus-4-7.
-const DEFAULT_MODEL = 'claude-3-5-sonnet-20240620';
+const DEFAULT_MODEL = 'claude-3-5-sonnet-20241022';
 
 // ── System prompt (STABLE — no dynamic content, eligible for caching) ────────
 // Render order: tools → system → messages.
