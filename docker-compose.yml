@@ -13,7 +13,7 @@ services:
       POSTGRES_DB:       netsuite_clone
     # Sin puerto público — solo accesible internamente entre contenedores
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data_v2:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -55,4 +55,4 @@ services:
       - api
 
 volumes:
-  pg_data:
+  pg_data_v2:
